@@ -25,7 +25,7 @@ struct Misfit_MetricsApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Dashboard()
         }
         .modelContainer(sharedModelContainer)
     }
