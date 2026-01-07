@@ -12,48 +12,71 @@ struct Dashboard: View {
     var body: some View {
         VStack(spacing: 10) {
 
-//            Speedometer(speed: viewModel.speed)
-//                .frame(width: 300, height: 300)
-//                .padding()
-            
             // Duration Timer
             Text(viewModel.formattedElapsedTime)
                 .font(.system(size: 64, weight: .medium, design: .monospaced))
                 .padding(.horizontal)
 
-            HalfCircleSpeedometer(speed: viewModel.speed)
-                .frame(width: 300, height: 150)
-                .padding(.horizontal)
+            // Top meter (half circle)
+            Group {
+                switch viewModel.layout {
+                case .A:
+                    HalfCircleSpeedometer(speed: viewModel.speed)
+                case .B:
+                    HalfCirclePowerMeter(power: viewModel.power)
+                case .C:
+                    HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
+                }
+            }
+            .frame(width: 300, height: 150)
+            .padding(.horizontal)
+            .transition(.opacity.combined(with: .scale))
 
+            // Bottom meters (two circles)
             HStack(spacing: 20) {
-                PowerMeter(power: viewModel.power)
-                    .frame(width: 150, height: 150)
-                    .border(Color.white)
+                Group {
+                    switch viewModel.layout {
+                    case .A:
+                        PowerMeter(power: viewModel.power)
+                    case .B:
+                        HeartRateMeter(heartRate: viewModel.heartRate)
+                    case .C:
+                        Speedometer(speed: viewModel.speed)
+                    }
+                }
+                .frame(width: 150, height: 150)
+                .transition(.opacity.combined(with: .scale))
 
-                Spacer()
+                Button {
+                    viewModel.rotateMeters()
+                } label: {
+                    Text("Swap")
+                        .foregroundStyle(Color("fairyRed"))
+                        .fixedSize()
+                        .padding(10)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color("fairyRed"), lineWidth: 1)
+                        }
+                }
 
-                HeartRateMeter(heartRate: viewModel.heartRate)
-                    .frame(width: 150, height: 150)
-                    .border(Color.white)
+                Group {
+                    switch viewModel.layout {
+                    case .A:
+                        HeartRateMeter(heartRate: viewModel.heartRate)
+                    case .B:
+                        Speedometer(speed: viewModel.speed)
+                    case .C:
+                        PowerMeter(power: viewModel.power)
+                    }
+                }
+                .frame(width: 150, height: 150)
+                .transition(.opacity.combined(with: .scale))
 
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 10)
             .padding(.horizontal)
-
-            HStack(spacing: 20) {
-                HalfCirclePowerMeter(power: viewModel.power)
-                    .frame(width: 300, height: 150)
-
-                Spacer()
-
-                HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
-                    .frame(width: 300, height: 150)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 10)
-            .padding(.horizontal)
-
 
             Spacer()
         }
@@ -88,17 +111,6 @@ struct TestControlOverlay: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            
-            if isRunning {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 8, height: 8)
-                    Text("Testing...")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
         }
         .padding()
         .background(.regularMaterial)
@@ -109,10 +121,18 @@ struct TestControlOverlay: View {
 
 extension Dashboard {
 
+    enum MeterLayout {
+        case A
+        case B
+        case C
+    }
+
     @Observable
     final class ViewModel {
 
-        var speed: Double = 12.0
+        var layout: MeterLayout = .A
+
+        var speed: Double = 0.0
         var power: Double = 0.0
         var heartRate: Double = 0.0
         var isTestRunning: Bool = false
@@ -137,7 +157,20 @@ extension Dashboard {
                 startTest()
             }
         }
-        
+
+        func rotateMeters() {
+            withAnimation(.easeInOut(duration: 1.0)) {
+                switch layout {
+                case .A:
+                    layout = .B
+                case .B:
+                    layout = .C
+                case .C:
+                    layout = .A
+                }
+            }
+        }
+
         private func startTest() {
             isTestRunning = true
             startTime = Date()

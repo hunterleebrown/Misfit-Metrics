@@ -56,10 +56,10 @@ struct Speedometer: View {
                 // Current speed display
                 VStack {
                     Text("\(Int(speed))")
-                        .font(.system(size: 48, weight: .bold))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .animation(.easeInOut(duration: 0.5), value: speed)
                     Text("MPH")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .offset(y: radius * 0.4)
