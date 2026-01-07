@@ -41,6 +41,20 @@ struct Dashboard: View {
             .padding(.top, 10)
             .padding(.horizontal)
 
+            HStack(spacing: 20) {
+                HalfCirclePowerMeter(power: viewModel.power)
+                    .frame(width: 300, height: 150)
+
+                Spacer()
+
+                HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
+                    .frame(width: 300, height: 150)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+            .padding(.horizontal)
+
+
             Spacer()
         }
         .overlay(alignment: .bottom) {
