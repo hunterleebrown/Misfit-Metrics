@@ -10,7 +10,7 @@ struct Dashboard: View {
     @State private var viewModel = ViewModel()
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 10) {
 
 //            Speedometer(speed: viewModel.speed)
 //                .frame(width: 300, height: 300)
@@ -24,6 +24,22 @@ struct Dashboard: View {
             HalfCircleSpeedometer(speed: viewModel.speed)
                 .frame(width: 300, height: 150)
                 .padding(.horizontal)
+
+            HStack(spacing: 20) {
+                PowerMeter(power: viewModel.power)
+                    .frame(width: 150, height: 150)
+                    .border(Color.white)
+
+                Spacer()
+
+                HeartRateMeter(heartRate: viewModel.heartRate)
+                    .frame(width: 150, height: 150)
+                    .border(Color.white)
+
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+            .padding(.horizontal)
 
             Spacer()
         }
@@ -83,6 +99,8 @@ extension Dashboard {
     final class ViewModel {
 
         var speed: Double = 12.0
+        var power: Double = 0.0
+        var heartRate: Double = 0.0
         var isTestRunning: Bool = false
         var elapsedTime: TimeInterval = 0
         var text: String = "Hello, World!"
@@ -130,6 +148,20 @@ extension Dashboard {
                     
                     // Apply change and clamp between 0 and 35
                     speed = max(0, min(35, speed + randomChange))
+                    
+                    // Random power change: ±10 to ±50 watts
+                    let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
+                    let randomPowerChange = powerChanges.randomElement() ?? 0
+                    
+                    // Apply change and clamp between 0 and 999
+                    power = max(0, min(999, power + randomPowerChange))
+                    
+                    // Random heart rate change: ±1 to ±5 bpm
+                    let heartRateChanges = [1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 5.0, -5.0]
+                    let randomHeartRateChange = heartRateChanges.randomElement() ?? 0
+                    
+                    // Apply change and clamp between 0 and 200
+                    heartRate = max(0, min(200, heartRate + randomHeartRateChange))
                     
                     // Wait for 1 second
                     try? await Task.sleep(for: .seconds(0.25))
