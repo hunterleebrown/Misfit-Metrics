@@ -6,9 +6,31 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct MapView: View {
+    @Binding var isPresented: Bool
+    @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
+    
     var body: some View {
-        Text("Map View")
+        Map(position: $position) {
+            UserAnnotation()
+        }
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .overlay(alignment: .topTrailing) {
+            Button {
+                isPresented = false
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.secondary)
+                    .padding()
+            }
+            .buttonStyle(.plain)
+        }
     }
 }

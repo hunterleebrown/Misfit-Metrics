@@ -155,31 +155,36 @@ struct Dashboard: View {
             .padding(.horizontal)
             .frame(maxWidth: .infinity)
 
+            Spacer()
+
             // Map
             Group {
                 if viewModel.mapViewToggle {
-                    MapView()
+                    MapView(isPresented: $viewModel.mapViewToggle)
                         .edgesIgnoringSafeArea(.all)
                 } else {
                     Button("Map") {
                         viewModel.mapViewToggle = true
                     }
+                    .foregroundStyle(Color("fairyRed"))
                 }
             }
 
             Spacer()
-        }
-        .overlay(alignment: .bottom) {
-            ControlPanel(
-                isRunning: viewModel.isRunning,
-                onStartPause: {
-                    viewModel.toggle()
-                },
-                onReset: {
-                    viewModel.reset()
-                }
-            )
-            .padding()
+
+            Group {
+                ControlPanel(
+                    isRunning: viewModel.isRunning,
+                    onStartPause: {
+                        viewModel.toggle()
+                    },
+                    onReset: {
+                        viewModel.reset()
+                    }
+                )
+                .padding()
+                .frame(height: 50)
+            }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(
