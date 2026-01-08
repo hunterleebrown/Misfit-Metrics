@@ -404,12 +404,12 @@ extension Dashboard {
                 }
             }
             
-            // Start speed monitoring
-            startSpeedMonitoring()
-            
-            // Start simulation if enabled
+
+            // Start simulation if enabled, otherwise start real speed monitoring
             if isSimulationMode {
                 startSimulation()
+            } else {
+                startSpeedMonitoring()
             }
         }
         
