@@ -24,35 +24,48 @@ struct HalfCirclePowerMeter: View {
             let center = CGPoint(x: width / 2, y: height)
             
             ZStack {
-                // Power pie wedge (filled from center)
-                HalfPieWedge(
-                    startAngle: startAngle,
-                    endAngle: .degrees(startAngle.degrees + (powerRatio * totalDegrees))
-                )
-                .fill(Color("fairyRed"))
-                
-                // Tick marks
-                ForEach(0..<Int(maxPower / tickInterval) + 1, id: \.self) { index in
-                    let watts = Double(index) * tickInterval
-                    let angle = startAngle.degrees + (watts / maxPower) * totalDegrees
-                    
-                    TickMark(
-                        angle: angle,
-                        radius: radius,
-                        center: center,
-                        isLarge: true
+                if power > 0 {
+                    // Power pie wedge (filled from center)
+                    HalfPieWedge(
+                        startAngle: startAngle,
+                        endAngle: .degrees(startAngle.degrees + (powerRatio * totalDegrees))
                     )
+                    .fill(Color("fairyRed"))
+                    
+                    // Tick marks
+                    ForEach(0..<Int(maxPower / tickInterval) + 1, id: \.self) { index in
+                        let watts = Double(index) * tickInterval
+                        let angle = startAngle.degrees + (watts / maxPower) * totalDegrees
+                        
+                        TickMark(
+                            angle: angle,
+                            radius: radius,
+                            center: center,
+                            isLarge: true
+                        )
+                    }
+                    
+                    // Center power value
+                    VStack(spacing: 2) {
+                        Text("\(Int(power))")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("watts")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .position(x: center.x, y: center.y - radius * 0.5)
+                } else {
+                    // Not available state
+                    VStack(spacing: 8) {
+                        Image(systemName: "bolt.slash.circle")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.secondary)
+                        Text("Not Available")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .position(x: center.x, y: center.y - radius * 0.5)
                 }
-                
-                // Center power value
-                VStack(spacing: 2) {
-                    Text("\(Int(power))")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                    Text("watts")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .position(x: center.x, y: center.y - radius * 0.5)
             }
         }
     }

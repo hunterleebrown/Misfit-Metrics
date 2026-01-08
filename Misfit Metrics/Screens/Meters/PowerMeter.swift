@@ -22,36 +22,48 @@ struct PowerMeter: View {
             let radius = size * 0.4
             
             ZStack {
-                // Background circle
-                // Power pie wedge (filled from center)
-                PieWedge(
-                    startAngle: startAngle,
-                    endAngle: .degrees(startAngle.degrees + (powerRatio * totalDegrees))
-                )
-                .fill(Color("fairyRed"))
-                .frame(width: radius * 2, height: radius * 2)
-                
-                // Tick marks
-                ForEach(0..<Int(maxPower / tickInterval) + 1, id: \.self) { index in
-                    let watts = Double(index) * tickInterval
-                    // Adjust angle to match the rotated circle (add 90° to align)
-                    let angle = 90 + (watts / maxPower) * totalDegrees
-                    
-                    TickMark(
-                        angle: angle,
-                        radius: radius,
-                        center: center,
-                        isLarge: true
+                if power > 0 {
+                    // Background circle
+                    // Power pie wedge (filled from center)
+                    PieWedge(
+                        startAngle: startAngle,
+                        endAngle: .degrees(startAngle.degrees + (powerRatio * totalDegrees))
                     )
-                }
-                
-                // Center power value
-                VStack(spacing: 2) {
-                    Text("\(Int(power))")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                    Text("watts")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .fill(Color("fairyRed"))
+                    .frame(width: radius * 2, height: radius * 2)
+                    
+                    // Tick marks
+                    ForEach(0..<Int(maxPower / tickInterval) + 1, id: \.self) { index in
+                        let watts = Double(index) * tickInterval
+                        // Adjust angle to match the rotated circle (add 90° to align)
+                        let angle = 90 + (watts / maxPower) * totalDegrees
+                        
+                        TickMark(
+                            angle: angle,
+                            radius: radius,
+                            center: center,
+                            isLarge: true
+                        )
+                    }
+                    
+                    // Center power value
+                    VStack(spacing: 2) {
+                        Text("\(Int(power))")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("watts")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    // Not available state
+                    VStack(spacing: 8) {
+                        Image(systemName: "bolt.slash.circle")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.secondary)
+                        Text("Not Available")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)

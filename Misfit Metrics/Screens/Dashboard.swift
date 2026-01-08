@@ -9,14 +9,35 @@ import SwiftUI
 struct Dashboard: View {
     @State private var viewModel = ViewModel()
     @State private var showingHeartRateMonitor = false
+    @State private var showingPowerMonitor = false
 
     var body: some View {
         VStack(spacing: 10) {
 
-            // Duration Timer
-            Text(viewModel.formattedElapsedTime)
-                .font(.system(size: 64, weight: .medium, design: .monospaced))
-                .padding(.horizontal)
+            // Duration Timer with Monitor Buttons
+            HStack(alignment: .center, spacing: 16) {
+                Button {
+                    showingPowerMonitor = true
+                } label: {
+                    Image(systemName: "bolt.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(viewModel.powerMonitor.isConnected ? Color.green : Color("fairyRed"))
+                }
+                .buttonStyle(.plain)
+                
+                Text(viewModel.formattedElapsedTime)
+                    .font(.system(size: 45, weight: .medium, design: .monospaced))
+
+                Button {
+                    showingHeartRateMonitor = true
+                } label: {
+                    Image(systemName: "heart.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(viewModel.heartRateMonitor.isConnected ? Color.green : Color("fairyRed"))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal)
 
             // Top meter (half circle)
             Group {
@@ -79,18 +100,20 @@ struct Dashboard: View {
             .padding(.top, 10)
             .padding(.horizontal)
 
-            Spacer()
-        }
-        .overlay(alignment: .topTrailing) {
-            Button {
-                showingHeartRateMonitor = true
-            } label: {
-                Image(systemName: "heart.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(viewModel.heartRateMonitor.isConnected ? Color.green : Color("fairyRed"))
-                    .padding()
+
+            Group {
+                VStack(alignment: .center) {
+                    Text("\(Int(viewModel.cadence))")
+                        .font(.system(size: 32, weight: .bold))
+                    Text("RPM")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+
+
+            Spacer()
         }
         .overlay(alignment: .bottom) {
             ControlPanel(
@@ -106,6 +129,9 @@ struct Dashboard: View {
         }
         .sheet(isPresented: $showingHeartRateMonitor) {
             HeartRateMonitorView(heartRateMonitor: viewModel.heartRateMonitor)
+        }
+        .sheet(isPresented: $showingPowerMonitor) {
+            PowerMonitorView(powerMonitor: viewModel.powerMonitor)
         }
     }
 }
@@ -161,7 +187,9 @@ extension Dashboard {
         
         let motionManager = MotionManager()
         let heartRateMonitor = HeartRateMonitor()
+        let powerMonitor = PowerMonitor()
 
+        var cadence: Double = 0.0
         var speed: Double = 0.0
         var power: Double = 0.0
         var heartRate: Double = 0.0
@@ -172,12 +200,15 @@ extension Dashboard {
         private var testTask: Task<Void, Never>?
         private var timerTask: Task<Void, Never>?
         private var heartRateTask: Task<Void, Never>?
+        private var powerTask: Task<Void, Never>?
         private var startTime: Date?
         private var pausedTime: TimeInterval = 0
         
         init() {
             // Start monitoring heart rate immediately
             startHeartRateMonitoring()
+            // Start monitoring power immediately
+            startPowerMonitoring()
         }
         
         var formattedElapsedTime: String {
@@ -200,11 +231,16 @@ extension Dashboard {
             motionManager.stopTracking()
             speed = 0.0
             power = 0.0
-            // Don't reset heart rate - keep showing live data
+            // Don't reset heart rate or power - keep showing live data from monitors
             elapsedTime = 0
             pausedTime = 0
             startTime = nil
-            heartRate = 0.0
+            if !powerMonitor.isConnected {
+                power = 0.0
+            }
+            if !heartRateMonitor.isConnected {
+                heartRate = 0.0
+            }
         }
 
         func rotateMeters() {
@@ -227,6 +263,24 @@ extension Dashboard {
                     // Always update heart rate from monitor if available
                     if heartRateMonitor.heartRate > 0 {
                         heartRate = heartRateMonitor.heartRate
+                    }
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
+        }
+        
+        // Continuous power monitoring (independent of test running state)
+        private func startPowerMonitoring() {
+            powerTask = Task { @MainActor in
+                while !Task.isCancelled {
+                    // Always update power from monitor if available and connected
+                    if powerMonitor.isConnected {
+                        // Check if cadence should timeout and reset to 0
+                        powerMonitor.checkCadenceTimeout()
+                        
+                        // Use 3-second average power
+                        power = powerMonitor.threeSecondPower
+                        cadence = powerMonitor.cadence
                     }
                     try? await Task.sleep(for: .milliseconds(250))
                 }
@@ -267,12 +321,16 @@ extension Dashboard {
                     
                     // Heart rate is now handled by the continuous monitoring task
                     
-                    // Random power change: ±10 to ±50 watts
-                    let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
-                    let randomPowerChange = powerChanges.randomElement() ?? 0
-                    
-                    // Apply change and clamp between 0 and 999
-                    power = max(0, min(999, power + randomPowerChange))
+                    // Only generate random power if not connected to a real power meter
+                    if !powerMonitor.isConnected {
+                        // Random power change: ±10 to ±50 watts
+                        let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
+                        let randomPowerChange = powerChanges.randomElement() ?? 0
+                        
+                        // Apply change and clamp between 0 and 999
+                        power = max(0, min(999, power + randomPowerChange))
+                    }
+                    // If connected to power meter, power is handled by startPowerMonitoring()
                     
                     // Wait for 0.25 seconds
                     try? await Task.sleep(for: .seconds(0.25))
@@ -303,6 +361,7 @@ extension Dashboard {
             testTask?.cancel()
             timerTask?.cancel()
             heartRateTask?.cancel()
+            powerTask?.cancel()
         }
     }
 }
