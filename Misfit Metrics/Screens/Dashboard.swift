@@ -33,7 +33,7 @@ struct Dashboard: View {
                 } label: {
                     Image(systemName: "heart.circle.fill")
                         .font(.title)
-                        .foregroundStyle(viewModel.heartRateMonitor.isConnected ? Color.green : Color("fairyRed"))
+                        .foregroundStyle(viewModel.isHeartRateConnected ? Color.green : Color("fairyRed"))
                 }
                 .buttonStyle(.plain)
             }
@@ -196,6 +196,11 @@ extension Dashboard {
         var isRunning: Bool = false
         var elapsedTime: TimeInterval = 0
         
+        // Computed property to check if heart rate monitor is connected
+        var isHeartRateConnected: Bool {
+            heartRateMonitor.isConnected
+        }
+        
         // Simulation mode for testing UI (e.g., in Simulator)
         var isSimulationMode: Bool = false
         
@@ -267,11 +272,11 @@ extension Dashboard {
         private func startHeartRateMonitoring() {
             heartRateTask = Task { @MainActor in
                 while !Task.isCancelled {
-                    // Always update heart rate from monitor if available
-                    if heartRateMonitor.heartRate > 0 {
+                    // Use Bluetooth heart rate monitor
+                    if heartRateMonitor.isConnected && heartRateMonitor.heartRate > 0 {
                         heartRate = heartRateMonitor.heartRate
-                    } else if !isSimulationMode && heartRate > 0 {
-                        // Only reset if not in simulation mode
+                    } else if !isSimulationMode && heartRate > 0 && !heartRateMonitor.isConnected {
+                        // Only reset if not in simulation mode and monitor not connected
                         heartRate = 0.0
                     }
                     try? await Task.sleep(for: .milliseconds(250))
@@ -398,11 +403,12 @@ extension Dashboard {
                 }
             }
             
-            // Start simulation if enabled, otherwise use real speed monitoring
+            // Start speed monitoring
+            startSpeedMonitoring()
+            
+            // Start simulation if enabled
             if isSimulationMode {
                 startSimulation()
-            } else {
-                startSpeedMonitoring()
             }
         }
         
