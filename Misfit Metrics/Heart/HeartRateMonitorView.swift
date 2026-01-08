@@ -36,6 +36,30 @@ struct HeartRateMonitorView: View {
                 
                 Divider()
                 
+                // Last Connected Device Info
+                if let lastDevice = heartRateMonitor.lastConnectedDeviceName, !heartRateMonitor.isConnected {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundStyle(.secondary)
+                            Text("Last connected: \(lastDevice)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Button {
+                            heartRateMonitor.forgetDevice()
+                        } label: {
+                            Text("Forget Device")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Divider()
+                }
+                
                 // Device List
                 if heartRateMonitor.isScanning || !heartRateMonitor.availableDevices.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
@@ -134,9 +158,9 @@ struct HeartRateMonitorView: View {
                         }
                     } else {
                         Button {
-                            heartRateMonitor.startScanning()
+                            heartRateMonitor.startScanningWithAutoConnect()
                         } label: {
-                            Text("Scan for Devices")
+                            Text(heartRateMonitor.lastConnectedDeviceName != nil ? "Connect to Last Device" : "Scan for Devices")
                                 .font(.headline)
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)

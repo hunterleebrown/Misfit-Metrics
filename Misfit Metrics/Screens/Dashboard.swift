@@ -305,7 +305,7 @@ extension Dashboard {
             speedTask = Task { @MainActor in
                 while !Task.isCancelled && isRunning {
                     // Use real speed from motion manager
-                    speed = motionManager.speed
+                    speed = motionManager.speed >= 0 ? motionManager.speed : 0.0
                     
                     try? await Task.sleep(for: .milliseconds(250))
                 }

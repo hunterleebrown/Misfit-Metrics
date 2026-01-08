@@ -66,6 +66,30 @@ struct PowerMonitorView: View {
                 
                 Divider()
                 
+                // Last Connected Device Info
+                if let lastDevice = powerMonitor.lastConnectedDeviceName, !powerMonitor.isConnected {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundStyle(.secondary)
+                            Text("Last connected: \(lastDevice)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Button {
+                            powerMonitor.forgetDevice()
+                        } label: {
+                            Text("Forget Device")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Divider()
+                }
+                
                 // Device List
                 if powerMonitor.isScanning || !powerMonitor.availableDevices.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
@@ -164,9 +188,9 @@ struct PowerMonitorView: View {
                         }
                     } else {
                         Button {
-                            powerMonitor.startScanning()
+                            powerMonitor.startScanningWithAutoConnect()
                         } label: {
-                            Text("Scan for Devices")
+                            Text(powerMonitor.lastConnectedDeviceName != nil ? "Connect to Last Device" : "Scan for Devices")
                                 .font(.headline)
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)

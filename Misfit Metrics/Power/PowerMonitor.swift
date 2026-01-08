@@ -18,10 +18,15 @@ class PowerMonitor: NSObject {
     var isScanning: Bool = false
     var availableDevices: [CBPeripheral] = []
     var statusMessage: String = "Not connected"
+    var lastConnectedDeviceName: String? {
+        deviceMemory.getLastDevice(type: .power)?.name
+    }
     
     // MARK: - Private Properties
     private var centralManager: CBCentralManager!
     private var powerPeripheral: CBPeripheral?
+    private let deviceMemory = BluetoothDeviceMemory()
+    private var shouldAutoConnect = true
     
     // Standard Bluetooth Cycling Power Service and Characteristic UUIDs
     private let cyclingPowerServiceUUID = CBUUID(string: "1818")
@@ -53,13 +58,29 @@ class PowerMonitor: NSObject {
         
         availableDevices.removeAll()
         isScanning = true
-        statusMessage = "Scanning for power meters..."
+        
+        if shouldAutoConnect, let lastDevice = deviceMemory.getLastDevice(type: .power) {
+            statusMessage = "Looking for \(lastDevice.name ?? "previous device")..."
+        } else {
+            statusMessage = "Scanning for power meters..."
+        }
         
         // Scan for devices advertising the Cycling Power Service
         centralManager.scanForPeripherals(
             withServices: [cyclingPowerServiceUUID],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
+    }
+    
+    /// Start scanning and auto-connect to previously used device
+    func startScanningWithAutoConnect() {
+        shouldAutoConnect = true
+        startScanning()
+    }
+    
+    /// Clear the remembered device
+    func forgetDevice() {
+        deviceMemory.clearDevice(type: .power)
     }
     
     /// Stop scanning for devices
@@ -74,6 +95,7 @@ class PowerMonitor: NSObject {
     /// Connect to a specific peripheral
     func connect(to peripheral: CBPeripheral) {
         stopScanning()
+        shouldAutoConnect = false // Manual connection, disable auto-connect
         statusMessage = "Connecting to \(peripheral.name ?? "device")..."
         powerPeripheral = peripheral
         centralManager.connect(peripheral, options: nil)
@@ -150,11 +172,20 @@ extension PowerMonitor: CBCentralManagerDelegate {
         if !availableDevices.contains(where: { $0.identifier == peripheral.identifier }) {
             availableDevices.append(peripheral)
         }
+        
+        // Auto-connect to previously used device if found
+        if shouldAutoConnect && deviceMemory.matches(peripheral, type: .power) {
+            shouldAutoConnect = false // Only try once per scan
+            connect(to: peripheral)
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         isConnected = true
         statusMessage = "Connected to \(peripheral.name ?? "device")"
+        
+        // Save this device for future auto-connect
+        deviceMemory.save(device: peripheral, type: .power)
         
         peripheral.delegate = self
         peripheral.discoverServices([cyclingPowerServiceUUID])

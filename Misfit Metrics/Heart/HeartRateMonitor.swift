@@ -16,10 +16,15 @@ class HeartRateMonitor: NSObject {
     var isScanning: Bool = false
     var availableDevices: [CBPeripheral] = []
     var statusMessage: String = "Not connected"
+    var lastConnectedDeviceName: String? {
+        deviceMemory.getLastDevice(type: .heartRate)?.name
+    }
     
     // MARK: - Private Properties
     private var centralManager: CBCentralManager!
     private var heartRatePeripheral: CBPeripheral?
+    private let deviceMemory = BluetoothDeviceMemory()
+    private var shouldAutoConnect = true
     
     // Standard Bluetooth Heart Rate Service and Characteristic UUIDs
     private let heartRateServiceUUID = CBUUID(string: "180D")
@@ -41,13 +46,29 @@ class HeartRateMonitor: NSObject {
         
         availableDevices.removeAll()
         isScanning = true
-        statusMessage = "Scanning for devices..."
+        
+        if shouldAutoConnect, let lastDevice = deviceMemory.getLastDevice(type: .heartRate) {
+            statusMessage = "Looking for \(lastDevice.name ?? "previous device")..."
+        } else {
+            statusMessage = "Scanning for devices..."
+        }
         
         // Scan for devices advertising the Heart Rate Service
         centralManager.scanForPeripherals(
             withServices: [heartRateServiceUUID],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
+    }
+    
+    /// Start scanning and auto-connect to previously used device
+    func startScanningWithAutoConnect() {
+        shouldAutoConnect = true
+        startScanning()
+    }
+    
+    /// Clear the remembered device
+    func forgetDevice() {
+        deviceMemory.clearDevice(type: .heartRate)
     }
     
     /// Stop scanning for devices
@@ -62,6 +83,7 @@ class HeartRateMonitor: NSObject {
     /// Connect to a specific peripheral
     func connect(to peripheral: CBPeripheral) {
         stopScanning()
+        shouldAutoConnect = false // Manual connection, disable auto-connect
         statusMessage = "Connecting to \(peripheral.name ?? "device")..."
         heartRatePeripheral = peripheral
         centralManager.connect(peripheral, options: nil)
@@ -105,11 +127,20 @@ extension HeartRateMonitor: CBCentralManagerDelegate {
         if !availableDevices.contains(where: { $0.identifier == peripheral.identifier }) {
             availableDevices.append(peripheral)
         }
+        
+        // Auto-connect to previously used device if found
+        if shouldAutoConnect && deviceMemory.matches(peripheral, type: .heartRate) {
+            shouldAutoConnect = false // Only try once per scan
+            connect(to: peripheral)
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         isConnected = true
         statusMessage = "Connected to \(peripheral.name ?? "device")"
+        
+        // Save this device for future auto-connect
+        deviceMemory.save(device: peripheral, type: .heartRate)
         
         peripheral.delegate = self
         peripheral.discoverServices([heartRateServiceUUID])
