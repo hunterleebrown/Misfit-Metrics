@@ -317,38 +317,57 @@ extension Dashboard {
             guard isSimulationMode else { return }
             
             simulationTask = Task { @MainActor in
+                // Linear speed array
+                let speedArray: [Double] = [10, 12, 14, 15, 18, 20]
+                var currentIndex = 0
+                var goingForward = true
+                
                 while !Task.isCancelled && isRunning {
-                    // Generate simulated speed (motion manager won't work in Simulator)
-                    let speedChanges = [-0.5, -0.3, -0.1, 0.0, 0.1, 0.3, 0.5]
-                    let randomSpeedChange = speedChanges.randomElement() ?? 0
+                    // Set speed from array
+                    speed = speedArray[currentIndex]
                     
-                    if speed == 0 {
-                        speed = 25.0 // Start at a reasonable cycling speed (km/h or mph)
+                    // Move to next index
+                    if goingForward {
+                        if currentIndex < speedArray.count - 1 {
+                            currentIndex += 1
+                        } else {
+                            goingForward = false
+                            currentIndex -= 1
+                        }
                     } else {
-                        speed = max(0, min(60, speed + randomSpeedChange))
+                        if currentIndex > 0 {
+                            currentIndex -= 1
+                        } else {
+                            goingForward = true
+                            currentIndex += 1
+                        }
                     }
                     
                     // Generate simulated power if not connected to real power meter
                     if !powerMonitor.isConnected {
-                        let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
-                        let randomPowerChange = powerChanges.randomElement() ?? 0
-                        
-                        let currentPower = power ?? 150.0
-                        power = max(0, min(999, currentPower + randomPowerChange))
+                        // Power roughly correlates with speed
+                        let basePower = speed * 12 // Rough approximation
+                        let powerVariation = Double.random(in: -20...20)
+                        power = max(0, min(999, basePower + powerVariation))
                     }
                     
                     // Generate simulated heart rate if not connected
                     if !heartRateMonitor.isConnected && heartRate == 0 {
-                        heartRate = 140 // Start at a reasonable baseline
+                        heartRate = 100 // Start at resting
                     }
                     
                     if !heartRateMonitor.isConnected && heartRate > 0 {
-                        let hrChanges = [-2.0, -1.0, 0.0, 1.0, 2.0]
-                        let randomHRChange = hrChanges.randomElement() ?? 0
-                        heartRate = max(60, min(200, heartRate + randomHRChange))
+                        // Heart rate gradually increases with speed
+                        let targetHR = 100 + (speed * 3) // Rough correlation
+                        if heartRate < targetHR {
+                            heartRate = min(targetHR, heartRate + Double.random(in: 0.5...1.5))
+                        } else {
+                            heartRate = max(targetHR, heartRate - Double.random(in: 0.5...1.5))
+                        }
+                        heartRate = max(60, min(200, heartRate))
                     }
                     
-                    try? await Task.sleep(for: .seconds(0.25))
+                    try? await Task.sleep(for: .seconds(0.5))
                 }
             }
         }
@@ -379,12 +398,11 @@ extension Dashboard {
                 }
             }
             
-            // Start speed monitoring
-            startSpeedMonitoring()
-            
-            // Start simulation if enabled
+            // Start simulation if enabled, otherwise use real speed monitoring
             if isSimulationMode {
                 startSimulation()
+            } else {
+                startSpeedMonitoring()
             }
         }
         
