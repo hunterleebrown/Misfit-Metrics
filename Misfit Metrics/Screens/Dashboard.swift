@@ -8,33 +8,27 @@ import SwiftUI
 
 struct Dashboard: View {
     @State private var viewModel = ViewModel()
-    @State private var showingHeartRateMonitor = false
-    @State private var showingPowerMonitor = false
+    @State private var showingSettings = false
 
     var body: some View {
         VStack(spacing: 10) {
 
             
-            // Duration Timer with Monitor Buttons
+            // Duration Timer with Settings Button
             HStack(alignment: .center, spacing: 16) {
-                Button {
-                    showingPowerMonitor = true
-                } label: {
-                    Image(systemName: "bolt.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(viewModel.powerMonitor.isConnected ? Color.green : Color("fairyRed"))
-                }
-                .buttonStyle(.plain)
+                Spacer()
                 
                 Text(viewModel.formattedElapsedTime)
                     .font(.system(size: 45, weight: .medium, design: .monospaced))
 
+                Spacer()
+                
                 Button {
-                    showingHeartRateMonitor = true
+                    showingSettings = true
                 } label: {
-                    Image(systemName: "heart.circle.fill")
+                    Image(systemName: "gear")
                         .font(.title)
-                        .foregroundStyle(viewModel.isHeartRateConnected ? Color.green : Color("fairyRed"))
+                        .foregroundStyle(Color("fairyRed"))
                 }
                 .buttonStyle(.plain)
             }
@@ -128,11 +122,11 @@ struct Dashboard: View {
             )
             .padding()
         }
-        .sheet(isPresented: $showingHeartRateMonitor) {
-            HeartRateMonitorView(heartRateMonitor: viewModel.heartRateMonitor)
-        }
-        .sheet(isPresented: $showingPowerMonitor) {
-            PowerMonitorView(powerMonitor: viewModel.powerMonitor)
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(
+                heartRateMonitor: viewModel.heartRateMonitor,
+                powerMonitor: viewModel.powerMonitor
+            )
         }
     }
 }
