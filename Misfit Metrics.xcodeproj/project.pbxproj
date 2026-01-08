@@ -279,6 +279,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Misfit-Metrics-Info.plist";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses Bluetooth to connect heart rate monitors and power monitors";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Misfit Metrics needs your location to track your speed and distance during your ride.";
@@ -316,6 +317,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Misfit-Metrics-Info.plist";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses Bluetooth to connect heart rate monitors and power monitors";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Misfit Metrics needs your location to track your speed and distance during your ride.";
