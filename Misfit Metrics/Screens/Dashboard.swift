@@ -8,6 +8,7 @@ import SwiftUI
 
 struct Dashboard: View {
     @State private var viewModel = ViewModel()
+    @State private var showingHeartRateMonitor = false
 
     var body: some View {
         VStack(spacing: 10) {
@@ -50,7 +51,7 @@ struct Dashboard: View {
                 Button {
                     viewModel.rotateMeters()
                 } label: {
-                    Text("Swap")
+                    Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                         .foregroundStyle(Color("fairyRed"))
                         .fixedSize()
                         .padding(10)
@@ -80,42 +81,68 @@ struct Dashboard: View {
 
             Spacer()
         }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                showingHeartRateMonitor = true
+            } label: {
+                Image(systemName: "heart.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(viewModel.heartRateMonitor.isConnected ? Color.green : Color("fairyRed"))
+                    .padding()
+            }
+            .buttonStyle(.plain)
+        }
         .overlay(alignment: .bottom) {
-            TestControlOverlay(
+            ControlPanel(
                 isRunning: viewModel.isTestRunning,
-                onStartStop: {
+                onStartPause: {
                     viewModel.toggleTest()
+                },
+                onReset: {
+                    viewModel.reset()
                 }
             )
             .padding()
         }
+        .sheet(isPresented: $showingHeartRateMonitor) {
+            HeartRateMonitorView(heartRateMonitor: viewModel.heartRateMonitor)
+        }
     }
 }
 
-struct TestControlOverlay: View {
+struct ControlPanel: View {
     let isRunning: Bool
-    let onStartStop: () -> Void
+    let onStartPause: () -> Void
+    let onReset: () -> Void
     
     var body: some View {
         HStack(spacing: 20) {
-            Button(action: onStartStop) {
+            Button(action: onStartPause) {
                 HStack {
-                    Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                    Text(isRunning ? "Stop Test" : "Start Test")
+                    Image(systemName: isRunning ? "pause.fill" : "play.fill")
                 }
-                .font(.headline)
-                .foregroundStyle(.white)
+                .font(.title)
+                .foregroundStyle(Color("fairyRed"))
+                .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
-                .background(isRunning ? Color.red : Color.green)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            
+            Button(action: onReset) {
+                HStack {
+                    Image(systemName: "arrow.counterclockwise")
+                }
+                .font(.title)
+                .foregroundStyle(Color("fairyRed"))
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
         }
         .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(radius: 8)
     }
 }
 
@@ -131,6 +158,9 @@ extension Dashboard {
     final class ViewModel {
 
         var layout: MeterLayout = .A
+        
+        let motionManager = MotionManager()
+        let heartRateMonitor = HeartRateMonitor()
 
         var speed: Double = 0.0
         var power: Double = 0.0
@@ -141,7 +171,14 @@ extension Dashboard {
         
         private var testTask: Task<Void, Never>?
         private var timerTask: Task<Void, Never>?
+        private var heartRateTask: Task<Void, Never>?
         private var startTime: Date?
+        private var pausedTime: TimeInterval = 0
+        
+        init() {
+            // Start monitoring heart rate immediately
+            startHeartRateMonitoring()
+        }
         
         var formattedElapsedTime: String {
             let hours = Int(elapsedTime) / 3600
@@ -152,10 +189,22 @@ extension Dashboard {
         
         func toggleTest() {
             if isTestRunning {
-                stopTest()
+                pauseTest()
             } else {
                 startTest()
             }
+        }
+        
+        func reset() {
+            stopTest()
+            motionManager.stopTracking()
+            speed = 0.0
+            power = 0.0
+            // Don't reset heart rate - keep showing live data
+            elapsedTime = 0
+            pausedTime = 0
+            startTime = nil
+            heartRate = 0.0
         }
 
         func rotateMeters() {
@@ -170,11 +219,35 @@ extension Dashboard {
                 }
             }
         }
+        
+        // Continuous heart rate monitoring (independent of test running state)
+        private func startHeartRateMonitoring() {
+            heartRateTask = Task { @MainActor in
+                while !Task.isCancelled {
+                    // Always update heart rate from monitor if available
+                    if heartRateMonitor.heartRate > 0 {
+                        heartRate = heartRateMonitor.heartRate
+                    }
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
+        }
 
         private func startTest() {
             isTestRunning = true
-            startTime = Date()
-            elapsedTime = 0
+            
+            // Start motion tracking
+            motionManager.startTracking()
+            
+            if startTime == nil {
+                // First time starting
+                startTime = Date()
+                elapsedTime = 0
+                pausedTime = 0
+            } else {
+                // Resuming from pause
+                startTime = Date().addingTimeInterval(-pausedTime)
+            }
             
             // Timer task to update elapsed time
             timerTask = Task { @MainActor in
@@ -186,15 +259,13 @@ extension Dashboard {
                 }
             }
             
-            // Speed test task
+            // Speed and power test task
             testTask = Task { @MainActor in
                 while !Task.isCancelled && isTestRunning {
-                    // Random speed change: ±1 or ±2
-                    let changes = [1.0, -1.0, 2.0, -2.0]
-                    let randomChange = changes.randomElement() ?? 0
+                    // Use real speed from motion manager
+                    speed = motionManager.speed
                     
-                    // Apply change and clamp between 0 and 35
-                    speed = max(0, min(35, speed + randomChange))
+                    // Heart rate is now handled by the continuous monitoring task
                     
                     // Random power change: ±10 to ±50 watts
                     let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
@@ -203,21 +274,25 @@ extension Dashboard {
                     // Apply change and clamp between 0 and 999
                     power = max(0, min(999, power + randomPowerChange))
                     
-                    // Random heart rate change: ±1 to ±5 bpm
-                    let heartRateChanges = [1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 5.0, -5.0]
-                    let randomHeartRateChange = heartRateChanges.randomElement() ?? 0
-                    
-                    // Apply change and clamp between 0 and 200
-                    heartRate = max(0, min(200, heartRate + randomHeartRateChange))
-                    
-                    // Wait for 1 second
+                    // Wait for 0.25 seconds
                     try? await Task.sleep(for: .seconds(0.25))
                 }
             }
         }
         
+        private func pauseTest() {
+            isTestRunning = false
+            pausedTime = elapsedTime
+            motionManager.stopTracking()
+            testTask?.cancel()
+            testTask = nil
+            timerTask?.cancel()
+            timerTask = nil
+        }
+        
         private func stopTest() {
             isTestRunning = false
+            motionManager.stopTracking()
             testTask?.cancel()
             testTask = nil
             timerTask?.cancel()
@@ -227,6 +302,7 @@ extension Dashboard {
         deinit {
             testTask?.cancel()
             timerTask?.cancel()
+            heartRateTask?.cancel()
         }
     }
 }

@@ -24,35 +24,48 @@ struct HalfCircleHeartRateMeter: View {
             let center = CGPoint(x: width / 2, y: height)
             
             ZStack {
-                // Heart rate pie wedge (filled from center)
-                HalfPieWedge(
-                    startAngle: startAngle,
-                    endAngle: .degrees(startAngle.degrees + (heartRateRatio * totalDegrees))
-                )
-                .fill(Color("fairyRed"))
-                
-                // Tick marks
-                ForEach(0..<Int(maxHeartRate / tickInterval) + 1, id: \.self) { index in
-                    let bpm = Double(index) * tickInterval
-                    let angle = startAngle.degrees + (bpm / maxHeartRate) * totalDegrees
-                    
-                    TickMark(
-                        angle: angle,
-                        radius: radius,
-                        center: center,
-                        isLarge: true
+                if heartRate > 0 {
+                    // Heart rate pie wedge (filled from center)
+                    HalfPieWedge(
+                        startAngle: startAngle,
+                        endAngle: .degrees(startAngle.degrees + (heartRateRatio * totalDegrees))
                     )
+                    .fill(Color("fairyRed"))
+                    
+                    // Tick marks
+                    ForEach(0..<Int(maxHeartRate / tickInterval) + 1, id: \.self) { index in
+                        let bpm = Double(index) * tickInterval
+                        let angle = startAngle.degrees + (bpm / maxHeartRate) * totalDegrees
+                        
+                        TickMark(
+                            angle: angle,
+                            radius: radius,
+                            center: center,
+                            isLarge: true
+                        )
+                    }
+                    
+                    // Center heart rate value
+                    VStack(spacing: 2) {
+                        Text("\(Int(heartRate))")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("bpm")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .position(x: center.x, y: center.y - radius * 0.5)
+                } else {
+                    // Not available state
+                    VStack(spacing: 8) {
+                        Image(systemName: "heart.slash.circle")
+                            .font(.system(size: 50))
+                            .foregroundStyle(.secondary)
+                        Text("Not Available")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .position(x: center.x, y: center.y - radius * 0.5)
                 }
-                
-                // Center heart rate value
-                VStack(spacing: 2) {
-                    Text("\(Int(heartRate))")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                    Text("bpm")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .position(x: center.x, y: center.y - radius * 0.5)
             }
         }
     }

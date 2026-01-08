@@ -22,36 +22,47 @@ struct HeartRateMeter: View {
             let radius = size * 0.4
             
             ZStack {
-                
-                // Heart rate pie wedge (filled from center)
-                PieWedge(
-                    startAngle: startAngle,
-                    endAngle: .degrees(startAngle.degrees + (heartRateRatio * totalDegrees))
-                )
-                .fill(Color("fairyRed"))
-                .frame(width: radius * 2, height: radius * 2)
-                
-                // Tick marks
-                ForEach(0..<Int(maxHeartRate / tickInterval) + 1, id: \.self) { index in
-                    let bpm = Double(index) * tickInterval
-                    // Adjust angle to match the rotated circle (add 90° to align)
-                    let angle = 90 + (bpm / maxHeartRate) * totalDegrees
-                    
-                    TickMark(
-                        angle: angle,
-                        radius: radius,
-                        center: center,
-                        isLarge: true
+                if heartRate > 0 {
+                    // Heart rate pie wedge (filled from center)
+                    PieWedge(
+                        startAngle: startAngle,
+                        endAngle: .degrees(startAngle.degrees + (heartRateRatio * totalDegrees))
                     )
-                }
-                
-                // Center heart rate value
-                VStack(spacing: 2) {
-                    Text("\(Int(heartRate))")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                    Text("bpm")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .fill(Color("fairyRed"))
+                    .frame(width: radius * 2, height: radius * 2)
+                    
+                    // Tick marks
+                    ForEach(0..<Int(maxHeartRate / tickInterval) + 1, id: \.self) { index in
+                        let bpm = Double(index) * tickInterval
+                        // Adjust angle to match the rotated circle (add 90° to align)
+                        let angle = 90 + (bpm / maxHeartRate) * totalDegrees
+                        
+                        TickMark(
+                            angle: angle,
+                            radius: radius,
+                            center: center,
+                            isLarge: true
+                        )
+                    }
+                    
+                    // Center heart rate value
+                    VStack(spacing: 2) {
+                        Text("\(Int(heartRate))")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("bpm")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    // Not available state
+                    VStack(spacing: 8) {
+                        Image(systemName: "heart.slash.circle")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.secondary)
+                        Text("Not Available")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
