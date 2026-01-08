@@ -9,6 +9,7 @@ import SwiftUI
 struct Dashboard: View {
     @State private var viewModel = ViewModel()
     @State private var showingSettings = false
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
 
     var body: some View {
         VStack(spacing: 10) {
@@ -96,17 +97,75 @@ struct Dashboard: View {
             .padding(.horizontal)
 
 
-            Group {
-                VStack(alignment: .center) {
-                    Text("\(Int(viewModel.cadence))")
-                        .font(.system(size: 32, weight: .bold))
-                    Text("RPM")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+            VStack(alignment: .center) {
+                Text("\(Int(viewModel.cadence))")
+                    .font(.system(size: 32, weight: .bold))
+                Text("RPM")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
+            .padding(.horizontal)
             .frame(maxWidth: .infinity)
 
+
+            Divider()
+                .frame(height: 2)
+
+            Group {
+                HStack(spacing:15) {
+
+                    VStack(alignment: .center) {
+                        Text(viewModel.distanceValue)
+                            .font(.system(size: 32, weight: .bold))
+
+                        HStack(spacing: 2) {
+                            Text("distance")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+
+                            Text(viewModel.distanceUnit)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 100)
+
+                    VStack(alignment: .center) {
+                        Text(String(format: "%.0f", viewModel.motionManager.gainedElevationInFeet))
+                            .font(.system(size: 32, weight: .bold))
+                        Text("gained elevation")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 100)
+
+
+                    VStack(alignment: .center) {
+                        Text(String(format: "%.0f", viewModel.motionManager.currentElevationInFeet))
+                            .font(.system(size: 32, weight: .bold))
+                        Text("curr elevation")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 100)
+
+
+                }
+            }
+            .padding(.horizontal)
+            .frame(maxWidth: .infinity)
+
+            // Map
+            Group {
+                if viewModel.mapViewToggle {
+                    MapView()
+                        .edgesIgnoringSafeArea(.all)
+                } else {
+                    Button("Map") {
+                        viewModel.mapViewToggle = true
+                    }
+                }
+            }
 
             Spacer()
         }
@@ -128,6 +187,7 @@ struct Dashboard: View {
                 powerMonitor: viewModel.powerMonitor
             )
         }
+        .preferredColorScheme(darkModeEnabled ? .dark : .light)
     }
 }
 
@@ -190,10 +250,29 @@ extension Dashboard {
         var heartRate: Double = 0.0
         var isRunning: Bool = false
         var elapsedTime: TimeInterval = 0
-        
+
+        var mapViewToggle: Bool = false
+
         // Computed property to check if heart rate monitor is connected
         var isHeartRateConnected: Bool {
             heartRateMonitor.isConnected
+        }
+        
+        // Computed properties for smart distance display
+        var distanceValue: String {
+            let miles = motionManager.distanceInMiles
+            if miles < 0.25 {
+                // Show in feet
+                let feet = miles * 5280 // 1 mile = 5280 feet
+                return String(format: "%.0f", feet)
+            } else {
+                // Show in miles
+                return String(format: "%.1f", miles)
+            }
+        }
+        
+        var distanceUnit: String {
+            motionManager.distanceInMiles < 0.25 ? "feet" : "miles"
         }
         
         // Simulation mode for testing UI (e.g., in Simulator)
@@ -237,6 +316,7 @@ extension Dashboard {
         func reset() {
             stop()
             motionManager.stopTracking()
+            motionManager.resetTracking()
             speed = 0.0
             // Don't reset heart rate or power - keep showing live data from monitors
             elapsedTime = 0

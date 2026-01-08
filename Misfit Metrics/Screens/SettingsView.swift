@@ -12,9 +12,17 @@ struct SettingsView: View {
     @Bindable var powerMonitor: PowerMonitor
     @Environment(\.dismiss) private var dismiss
     
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Toggle("Dark Mode", isOn: $darkModeEnabled)
+                } header: {
+                    Text("Appearance")
+                }
+                
                 Section {
                     NavigationLink {
                         HeartRateMonitorView(heartRateMonitor: heartRateMonitor)
