@@ -13,6 +13,8 @@ struct Dashboard: View {
 
     var body: some View {
         VStack(spacing: 10) {
+
+            
             // Duration Timer with Monitor Buttons
             HStack(alignment: .center, spacing: 16) {
                 Button {
