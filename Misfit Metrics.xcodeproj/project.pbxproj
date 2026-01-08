@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5AA4D3112F0F62EF00174051 /* Misfit-Metrics-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3102F0F62EF00174051 /* Misfit-Metrics-Info.plist */; };
 		5AA4D3152F0F635300174051 /* ci_post_xcodebuild.sh in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3122F0F635300174051 /* ci_post_xcodebuild.sh */; };
 		5AA4D3162F0F635300174051 /* ci_post_clone.sh in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3132F0F635300174051 /* ci_post_clone.sh */; };
 /* End PBXBuildFile section */
@@ -129,7 +128,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5AA4D3112F0F62EF00174051 /* Misfit-Metrics-Info.plist in Resources */,
 				5AA4D3152F0F635300174051 /* ci_post_xcodebuild.sh in Resources */,
 				5AA4D3162F0F635300174051 /* ci_post_clone.sh in Resources */,
 			);
