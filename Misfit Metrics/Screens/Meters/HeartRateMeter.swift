@@ -72,62 +72,6 @@ struct HeartRateMeter: View {
     private var heartRateRatio: Double {
         min(max(heartRate / maxHeartRate, 0), 1)
     }
-    
-    struct PieWedge: Shape {
-        let startAngle: Angle
-        let endAngle: Angle
-        
-        func path(in rect: CGRect) -> Path {
-            var path = Path()
-            let center = CGPoint(x: rect.midX, y: rect.midY)
-            let radius = min(rect.width, rect.height) / 2
-            
-            // Start at center
-            path.move(to: center)
-            
-            // Add arc from startAngle to endAngle
-            path.addArc(
-                center: center,
-                radius: radius,
-                startAngle: startAngle,
-                endAngle: endAngle,
-                clockwise: false
-            )
-            
-            // Close path back to center
-            path.closeSubpath()
-            
-            return path
-        }
-    }
-    
-    struct TickMark: View {
-        let angle: Double
-        let radius: Double
-        let center: CGPoint
-        let isLarge: Bool
-        
-        var body: some View {
-            let radians = angle * .pi / 180
-            let length: CGFloat = isLarge ? 12 : 6
-            let width: CGFloat = isLarge ? 2 : 1
-            
-            // Position tick marks on the outer edge of the circle
-            let outerRadius = radius
-            let innerRadius = radius - length
-            
-            let startX = center.x + cos(radians) * outerRadius
-            let startY = center.y + sin(radians) * outerRadius
-            let endX = center.x + cos(radians) * innerRadius
-            let endY = center.y + sin(radians) * innerRadius
-            
-            Path { path in
-                path.move(to: CGPoint(x: startX, y: startY))
-                path.addLine(to: CGPoint(x: endX, y: endY))
-            }
-            .stroke(Color.primary, lineWidth: width)
-        }
-    }
 }
 
 #Preview {
