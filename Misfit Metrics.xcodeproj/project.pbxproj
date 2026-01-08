@@ -6,8 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5AA4D3112F0F62EF00174051 /* Misfit-Metrics-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3102F0F62EF00174051 /* Misfit-Metrics-Info.plist */; };
+		5AA4D3152F0F635300174051 /* ci_post_xcodebuild.sh in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3122F0F635300174051 /* ci_post_xcodebuild.sh */; };
+		5AA4D3162F0F635300174051 /* ci_post_clone.sh in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3132F0F635300174051 /* ci_post_clone.sh */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		5AA4D2C12F0EF3E400174051 /* Misfit Metrics.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Misfit Metrics.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5AA4D3102F0F62EF00174051 /* Misfit-Metrics-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Misfit-Metrics-Info.plist"; sourceTree = "<group>"; };
+		5AA4D3122F0F635300174051 /* ci_post_xcodebuild.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ci_post_xcodebuild.sh; sourceTree = "<group>"; };
+		5AA4D3132F0F635300174051 /* ci_post_clone.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ci_post_clone.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +41,8 @@
 		5AA4D2B82F0EF3E400174051 = {
 			isa = PBXGroup;
 			children = (
+				5AA4D3142F0F635300174051 /* ci_scripts */,
+				5AA4D3102F0F62EF00174051 /* Misfit-Metrics-Info.plist */,
 				5AA4D2C32F0EF3E400174051 /* Misfit Metrics */,
 				5AA4D2C22F0EF3E400174051 /* Products */,
 			);
@@ -43,6 +54,15 @@
 				5AA4D2C12F0EF3E400174051 /* Misfit Metrics.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		5AA4D3142F0F635300174051 /* ci_scripts */ = {
+			isa = PBXGroup;
+			children = (
+				5AA4D3122F0F635300174051 /* ci_post_xcodebuild.sh */,
+				5AA4D3132F0F635300174051 /* ci_post_clone.sh */,
+			);
+			path = ci_scripts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -109,6 +129,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5AA4D3112F0F62EF00174051 /* Misfit-Metrics-Info.plist in Resources */,
+				5AA4D3152F0F635300174051 /* ci_post_xcodebuild.sh in Resources */,
+				5AA4D3162F0F635300174051 /* ci_post_clone.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
