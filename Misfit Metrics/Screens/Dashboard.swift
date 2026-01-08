@@ -117,9 +117,9 @@ struct Dashboard: View {
         }
         .overlay(alignment: .bottom) {
             ControlPanel(
-                isRunning: viewModel.isTestRunning,
+                isRunning: viewModel.isRunning,
                 onStartPause: {
-                    viewModel.toggleTest()
+                    viewModel.toggle()
                 },
                 onReset: {
                     viewModel.reset()
@@ -191,16 +191,19 @@ extension Dashboard {
 
         var cadence: Double = 0.0
         var speed: Double = 0.0
-        var power: Double = 0.0
+        var power: Double? = nil
         var heartRate: Double = 0.0
-        var isTestRunning: Bool = false
+        var isRunning: Bool = false
         var elapsedTime: TimeInterval = 0
-        var text: String = "Hello, World!"
         
-        private var testTask: Task<Void, Never>?
+        // Simulation mode for testing UI (e.g., in Simulator)
+        var isSimulationMode: Bool = false
+        
+        private var speedTask: Task<Void, Never>?
         private var timerTask: Task<Void, Never>?
         private var heartRateTask: Task<Void, Never>?
         private var powerTask: Task<Void, Never>?
+        private var simulationTask: Task<Void, Never>?
         private var startTime: Date?
         private var pausedTime: TimeInterval = 0
         
@@ -209,6 +212,11 @@ extension Dashboard {
             startHeartRateMonitoring()
             // Start monitoring power immediately
             startPowerMonitoring()
+            
+            // Enable simulation mode on Simulator
+            #if targetEnvironment(simulator)
+            isSimulationMode = true
+            #endif
         }
         
         var formattedElapsedTime: String {
@@ -218,25 +226,24 @@ extension Dashboard {
             return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
         }
         
-        func toggleTest() {
-            if isTestRunning {
-                pauseTest()
+        func toggle() {
+            if isRunning {
+                pause()
             } else {
-                startTest()
+                start()
             }
         }
         
         func reset() {
-            stopTest()
+            stop()
             motionManager.stopTracking()
             speed = 0.0
-            power = 0.0
             // Don't reset heart rate or power - keep showing live data from monitors
             elapsedTime = 0
             pausedTime = 0
             startTime = nil
             if !powerMonitor.isConnected {
-                power = 0.0
+                power = nil
             }
             if !heartRateMonitor.isConnected {
                 heartRate = 0.0
@@ -256,20 +263,23 @@ extension Dashboard {
             }
         }
         
-        // Continuous heart rate monitoring (independent of test running state)
+        // Continuous heart rate monitoring (independent of workout state)
         private func startHeartRateMonitoring() {
             heartRateTask = Task { @MainActor in
                 while !Task.isCancelled {
                     // Always update heart rate from monitor if available
                     if heartRateMonitor.heartRate > 0 {
                         heartRate = heartRateMonitor.heartRate
+                    } else if !isSimulationMode && heartRate > 0 {
+                        // Only reset if not in simulation mode
+                        heartRate = 0.0
                     }
                     try? await Task.sleep(for: .milliseconds(250))
                 }
             }
         }
         
-        // Continuous power monitoring (independent of test running state)
+        // Continuous power monitoring (independent of workout state)
         private func startPowerMonitoring() {
             powerTask = Task { @MainActor in
                 while !Task.isCancelled {
@@ -281,14 +291,70 @@ extension Dashboard {
                         // Use 3-second average power
                         power = powerMonitor.threeSecondPower
                         cadence = powerMonitor.cadence
+                    } else if !isSimulationMode {
+                        // Only set to nil when not connected AND not in simulation mode
+                        power = nil
                     }
                     try? await Task.sleep(for: .milliseconds(250))
                 }
             }
         }
+        
+        // Continuous speed monitoring
+        private func startSpeedMonitoring() {
+            speedTask = Task { @MainActor in
+                while !Task.isCancelled && isRunning {
+                    // Use real speed from motion manager
+                    speed = motionManager.speed
+                    
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+            }
+        }
+        
+        // Simulation mode for testing UI (generates fake data)
+        private func startSimulation() {
+            guard isSimulationMode else { return }
+            
+            simulationTask = Task { @MainActor in
+                while !Task.isCancelled && isRunning {
+                    // Generate simulated speed (motion manager won't work in Simulator)
+                    let speedChanges = [-0.5, -0.3, -0.1, 0.0, 0.1, 0.3, 0.5]
+                    let randomSpeedChange = speedChanges.randomElement() ?? 0
+                    
+                    if speed == 0 {
+                        speed = 25.0 // Start at a reasonable cycling speed (km/h or mph)
+                    } else {
+                        speed = max(0, min(60, speed + randomSpeedChange))
+                    }
+                    
+                    // Generate simulated power if not connected to real power meter
+                    if !powerMonitor.isConnected {
+                        let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
+                        let randomPowerChange = powerChanges.randomElement() ?? 0
+                        
+                        let currentPower = power ?? 150.0
+                        power = max(0, min(999, currentPower + randomPowerChange))
+                    }
+                    
+                    // Generate simulated heart rate if not connected
+                    if !heartRateMonitor.isConnected && heartRate == 0 {
+                        heartRate = 140 // Start at a reasonable baseline
+                    }
+                    
+                    if !heartRateMonitor.isConnected && heartRate > 0 {
+                        let hrChanges = [-2.0, -1.0, 0.0, 1.0, 2.0]
+                        let randomHRChange = hrChanges.randomElement() ?? 0
+                        heartRate = max(60, min(200, heartRate + randomHRChange))
+                    }
+                    
+                    try? await Task.sleep(for: .seconds(0.25))
+                }
+            }
+        }
 
-        private func startTest() {
-            isTestRunning = true
+        private func start() {
+            isRunning = true
             
             // Start motion tracking
             motionManager.startTracking()
@@ -305,7 +371,7 @@ extension Dashboard {
             
             // Timer task to update elapsed time
             timerTask = Task { @MainActor in
-                while !Task.isCancelled && isTestRunning {
+                while !Task.isCancelled && isRunning {
                     if let startTime = startTime {
                         elapsedTime = Date().timeIntervalSince(startTime)
                     }
@@ -313,52 +379,41 @@ extension Dashboard {
                 }
             }
             
-            // Speed and power test task
-            testTask = Task { @MainActor in
-                while !Task.isCancelled && isTestRunning {
-                    // Use real speed from motion manager
-                    speed = motionManager.speed
-                    
-                    // Heart rate is now handled by the continuous monitoring task
-                    
-                    // Only generate random power if not connected to a real power meter
-                    if !powerMonitor.isConnected {
-                        // Random power change: ±10 to ±50 watts
-                        let powerChanges = [10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 50.0, -50.0]
-                        let randomPowerChange = powerChanges.randomElement() ?? 0
-                        
-                        // Apply change and clamp between 0 and 999
-                        power = max(0, min(999, power + randomPowerChange))
-                    }
-                    // If connected to power meter, power is handled by startPowerMonitoring()
-                    
-                    // Wait for 0.25 seconds
-                    try? await Task.sleep(for: .seconds(0.25))
-                }
+            // Start speed monitoring
+            startSpeedMonitoring()
+            
+            // Start simulation if enabled
+            if isSimulationMode {
+                startSimulation()
             }
         }
         
-        private func pauseTest() {
-            isTestRunning = false
+        private func pause() {
+            isRunning = false
             pausedTime = elapsedTime
             motionManager.stopTracking()
-            testTask?.cancel()
-            testTask = nil
+            speedTask?.cancel()
+            speedTask = nil
+            simulationTask?.cancel()
+            simulationTask = nil
             timerTask?.cancel()
             timerTask = nil
         }
         
-        private func stopTest() {
-            isTestRunning = false
+        private func stop() {
+            isRunning = false
             motionManager.stopTracking()
-            testTask?.cancel()
-            testTask = nil
+            speedTask?.cancel()
+            speedTask = nil
+            simulationTask?.cancel()
+            simulationTask = nil
             timerTask?.cancel()
             timerTask = nil
         }
         
         deinit {
-            testTask?.cancel()
+            speedTask?.cancel()
+            simulationTask?.cancel()
             timerTask?.cancel()
             heartRateTask?.cancel()
             powerTask?.cancel()

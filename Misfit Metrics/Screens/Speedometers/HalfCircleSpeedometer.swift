@@ -62,7 +62,7 @@ struct HalfCircleSpeedometer: View {
                     Text("\(Int(speed))")
                         .font(.system(size: 32, weight: .bold))
                     Text("MPH")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .position(x: center.x, y: center.y - radius * 0.3)

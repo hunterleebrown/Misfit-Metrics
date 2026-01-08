@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PowerMeter: View {
-    let power: Double // 0 to 999 watts
+    let power: Double? // 0 to 999 watts, nil if not available
     
     private let startAngle: Angle = .degrees(90) // Start at 6 o'clock (90° in canvas coordinates)
     private let totalDegrees: Double = 350 // Total sweep
@@ -22,12 +22,12 @@ struct PowerMeter: View {
             let radius = size * 0.4
             
             ZStack {
-                if power > 0 {
+                if let power = power {
                     // Background circle
                     // Power pie wedge (filled from center)
                     PieWedge(
                         startAngle: startAngle,
-                        endAngle: .degrees(startAngle.degrees + (powerRatio * totalDegrees))
+                        endAngle: .degrees(startAngle.degrees + (powerRatio(for: power) * totalDegrees))
                     )
                     .fill(Color("fairyRed"))
                     .frame(width: radius * 2, height: radius * 2)
@@ -53,6 +53,9 @@ struct PowerMeter: View {
                         Text("watts")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        Text("3 sec")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 } else {
                     // Not available state
@@ -70,7 +73,7 @@ struct PowerMeter: View {
         }
     }
     
-    private var powerRatio: Double {
+    private func powerRatio(for power: Double) -> Double {
         min(max(power / maxPower, 0), 1)
     }
     
@@ -133,6 +136,9 @@ struct PowerMeter: View {
 
 #Preview {
     VStack(spacing: 40) {
+        PowerMeter(power: nil)
+            .frame(width: 150, height: 150)
+        
         PowerMeter(power: 0)
             .frame(width: 150, height: 150)
         

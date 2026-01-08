@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct HalfCirclePowerMeter: View {
-    let power: Double // 0 to 999 watts
+    let power: Double? // 0 to 999 watts, nil if not available
     
     private let minPower: Double = 0
     private let maxPower: Double = 999
@@ -24,11 +24,11 @@ struct HalfCirclePowerMeter: View {
             let center = CGPoint(x: width / 2, y: height)
             
             ZStack {
-                if power > 0 {
+                if let power = power {
                     // Power pie wedge (filled from center)
                     HalfPieWedge(
                         startAngle: startAngle,
-                        endAngle: .degrees(startAngle.degrees + (powerRatio * totalDegrees))
+                        endAngle: .degrees(startAngle.degrees + (powerRatio(for: power) * totalDegrees))
                     )
                     .fill(Color("fairyRed"))
                     
@@ -52,6 +52,9 @@ struct HalfCirclePowerMeter: View {
                         Text("watts")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        Text("3 sec")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     .position(x: center.x, y: center.y - radius * 0.5)
                 } else {
@@ -70,7 +73,7 @@ struct HalfCirclePowerMeter: View {
         }
     }
     
-    private var powerRatio: Double {
+    private func powerRatio(for power: Double) -> Double {
         min(max(power / maxPower, 0), 1)
     }
     
@@ -135,6 +138,9 @@ struct HalfCirclePowerMeter: View {
 
 #Preview {
     VStack(spacing: 40) {
+        HalfCirclePowerMeter(power: nil)
+            .frame(width: 300, height: 150)
+        
         HalfCirclePowerMeter(power: 0)
             .frame(width: 300, height: 150)
         
