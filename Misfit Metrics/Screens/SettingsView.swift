@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct SettingsView: View {
     @Bindable var dashboardViewModel: Dashboard.ViewModel
@@ -28,9 +29,38 @@ struct SettingsView: View {
                         Text("Rainbow").tag(Dashboard.BackgroundLook.rainbow)
                         Text("Earth").tag(Dashboard.BackgroundLook.earth)
                         Text("Plain").tag(Dashboard.BackgroundLook.plain)
+                        Text("Custom Photo").tag(Dashboard.BackgroundLook.userPhoto)
+                    }
+                    
+                    PhotosPicker(
+                        selection: $dashboardViewModel.photoPickerItem,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        HStack {
+                            Image(systemName: "photo.on.rectangle")
+                                .foregroundStyle(Color("fairyRed"))
+                            Text("Choose Photo")
+                            
+                            Spacer()
+                            
+                            if let photo = dashboardViewModel.userBackgroundPhoto {
+                                Image(uiImage: photo)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 40, height: 40)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
                     }
                 } header: {
                     Text("Dashboard Background")
+                } footer: {
+                    if dashboardViewModel.backgroundLook == .userPhoto && dashboardViewModel.userBackgroundPhoto != nil {
+                        Text("Your custom photo is set as the background.")
+                    } else if dashboardViewModel.backgroundLook == .userPhoto {
+                        Text("Select a photo to use as your custom background.")
+                    }
                 }
                 
                 Section {

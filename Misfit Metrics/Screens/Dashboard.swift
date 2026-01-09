@@ -5,6 +5,7 @@
 //  Created by Hunter Lee Brown on 1/7/26.
 //
 import SwiftUI
+import PhotosUI
 
 struct Dashboard: View {
     @State private var viewModel = ViewModel()
@@ -127,7 +128,22 @@ struct Dashboard: View {
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .opacity(0.3)
-                            .blur(radius: 2)                    }
+                            .blur(radius: 2)
+                    case .userPhoto:
+                        if let photo = viewModel.userBackgroundPhoto {
+                            GeometryReader { geometry in
+                                Image(uiImage: photo)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .clipped()
+                                    .opacity(0.3)
+                                    .blur(radius: 2)
+                            }
+                        } else {
+                            EmptyView()
+                        }
+                    }
                 }
             }
 
@@ -305,18 +321,37 @@ extension Dashboard {
         case C
     }
 
-    enum BackgroundLook {
+    enum BackgroundLook: String, Codable {
         case earth
         case bike
         case rainbow
         case plain
+        case userPhoto
     }
 
     @Observable
     final class ViewModel {
 
         var layout: MeterLayout = .A
-        var backgroundLook: BackgroundLook = .bike
+        var backgroundLook: BackgroundLook = .bike {
+            didSet {
+                UserDefaults.standard.set(backgroundLook.rawValue, forKey: "backgroundLook")
+            }
+        }
+        
+        // User photo for background
+        var userBackgroundPhoto: UIImage? = nil {
+            didSet {
+                savePhotoToUserDefaults()
+            }
+        }
+        var photoPickerItem: PhotosPickerItem? = nil {
+            didSet {
+                Task {
+                    await loadPhoto()
+                }
+            }
+        }
 
         let motionManager = MotionManager()
         let heartRateMonitor = HeartRateMonitor()
@@ -365,10 +400,19 @@ extension Dashboard {
         private var pausedTime: TimeInterval = 0
         
         init() {
+            // Load saved background look from UserDefaults
+            if let rawValue = UserDefaults.standard.string(forKey: "backgroundLook"),
+               let savedLook = BackgroundLook(rawValue: rawValue) {
+                self.backgroundLook = savedLook
+            }
+            
             // Start monitoring heart rate immediately
             startHeartRateMonitoring()
             // Start monitoring power immediately
             startPowerMonitoring()
+            
+            // Load saved photo from UserDefaults
+            loadPhotoFromUserDefaults()
             
             // Enable simulation mode on Simulator
             #if targetEnvironment(simulator)
@@ -605,6 +649,47 @@ extension Dashboard {
             timerTask?.cancel()
             heartRateTask?.cancel()
             powerTask?.cancel()
+        }
+        
+        // Load photo from PhotosPicker
+        @MainActor
+        private func loadPhoto() async {
+            guard let photoPickerItem else { return }
+            
+            do {
+                if let data = try await photoPickerItem.loadTransferable(type: Data.self),
+                   let uiImage = UIImage(data: data) {
+                    self.userBackgroundPhoto = uiImage
+                    self.backgroundLook = .userPhoto
+                }
+            } catch {
+                print("Error loading photo: \(error.localizedDescription)")
+            }
+        }
+        
+        // Save photo to UserDefaults
+        private func savePhotoToUserDefaults() {
+            guard let photo = userBackgroundPhoto else {
+                // If photo is nil, remove it from UserDefaults
+                UserDefaults.standard.removeObject(forKey: "userBackgroundPhoto")
+                return
+            }
+            
+            // Compress image to reduce storage size (0.8 quality is good balance)
+            if let imageData = photo.jpegData(compressionQuality: 0.8) {
+                UserDefaults.standard.set(imageData, forKey: "userBackgroundPhoto")
+            }
+        }
+        
+        // Load photo from UserDefaults
+        private func loadPhotoFromUserDefaults() {
+            guard let imageData = UserDefaults.standard.data(forKey: "userBackgroundPhoto"),
+                  let image = UIImage(data: imageData) else {
+                return
+            }
+            
+            self.userBackgroundPhoto = image
+            // Don't automatically set backgroundLook here - let user choose when to display it
         }
     }
 }
