@@ -49,9 +49,8 @@ struct HalfCirclePowerMeter: View {
                     VStack(spacing: 2) {
                         Text("\(Int(power))")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                        Text("watts")
+                        Image(systemName: "bolt.fill")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
                         Text("3 sec")
                             .font(.caption)
                             .foregroundStyle(.secondary)

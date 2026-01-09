@@ -49,9 +49,8 @@ struct HalfCircleHeartRateMeter: View {
                     VStack(spacing: 2) {
                         Text("\(Int(heartRate))")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                        Text("bpm")
+                        Image(systemName: "heart.fill")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                     .position(x: center.x, y: center.y - radius * 0.5)
                 } else {

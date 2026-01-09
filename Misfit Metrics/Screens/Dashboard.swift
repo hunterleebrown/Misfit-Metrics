@@ -14,102 +14,122 @@ struct Dashboard: View {
     var body: some View {
         VStack(spacing: 10) {
 
-            
-            // Duration Timer with Settings Button
-            HStack(alignment: .center, spacing: 16) {
-                Spacer()
-                
-                Text(viewModel.formattedElapsedTime)
-                    .font(.system(size: 45, weight: .medium, design: .monospaced))
+            VStack {
 
-                Spacer()
-                
-                Button {
-                    showingSettings = true
-                } label: {
-                    Image(systemName: "gear")
-                        .font(.title)
-                        .foregroundStyle(Color("fairyRed"))
+                // Duration Timer with Settings Button
+                HStack(alignment: .center, spacing: 16) {
+                    Spacer()
+
+                    Text(viewModel.formattedElapsedTime)
+                        .font(.system(size: 45, weight: .medium, design: .monospaced))
+
+                    Spacer()
+
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gear")
+                            .font(.title)
+                            .foregroundStyle(Color("fairyRed"))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal)
+                .padding(.horizontal)
 
-            // Top meter (half circle)
-            Group {
-                switch viewModel.layout {
-                case .A:
-                    HalfCircleSpeedometer(speed: viewModel.speed)
-                case .B:
-                    HalfCirclePowerMeter(power: viewModel.power)
-                case .C:
-                    HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
-                }
-            }
-            .frame(width: 300, height: 150)
-            .padding(.horizontal)
-            .transition(.opacity.combined(with: .scale))
-
-            // Bottom meters (two circles)
-            HStack(spacing: 20) {
+                // Top meter (half circle)
                 Group {
                     switch viewModel.layout {
                     case .A:
-                        PowerMeter(power: viewModel.power)
+                        HalfCircleSpeedometer(speed: viewModel.speed)
                     case .B:
-                        HeartRateMeter(heartRate: viewModel.heartRate)
+                        HalfCirclePowerMeter(power: viewModel.power)
                     case .C:
-                        Speedometer(speed: viewModel.speed)
+                        HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
                     }
                 }
-                .frame(width: 150, height: 150)
+                .frame(width: 300, height: 150)
+                .padding(.horizontal)
                 .transition(.opacity.combined(with: .scale))
 
-                Button {
-                    viewModel.rotateMeters()
-                } label: {
-                    Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
-                        .foregroundStyle(Color("fairyRed"))
-                        .fixedSize()
-                        .padding(10)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color("fairyRed"), lineWidth: 1)
+                // Bottom meters (two circles)
+                HStack(spacing: 20) {
+                    Group {
+                        switch viewModel.layout {
+                        case .A:
+                            PowerMeter(power: viewModel.power)
+                        case .B:
+                            HeartRateMeter(heartRate: viewModel.heartRate)
+                        case .C:
+                            Speedometer(speed: viewModel.speed)
                         }
-                }
-
-                Group {
-                    switch viewModel.layout {
-                    case .A:
-                        HeartRateMeter(heartRate: viewModel.heartRate)
-                    case .B:
-                        Speedometer(speed: viewModel.speed)
-                    case .C:
-                        PowerMeter(power: viewModel.power)
                     }
+                    .frame(width: 150, height: 150)
+                    .transition(.opacity.combined(with: .scale))
+
+                    Button {
+                        viewModel.rotateMeters()
+                    } label: {
+                        Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                            .foregroundStyle(Color("fairyRed"))
+                            .fixedSize()
+                            .padding(10)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color("fairyRed"), lineWidth: 1)
+                            }
+                    }
+
+                    Group {
+                        switch viewModel.layout {
+                        case .A:
+                            HeartRateMeter(heartRate: viewModel.heartRate)
+                        case .B:
+                            Speedometer(speed: viewModel.speed)
+                        case .C:
+                            PowerMeter(power: viewModel.power)
+                        }
+                    }
+                    .frame(width: 150, height: 150)
+                    .transition(.opacity.combined(with: .scale))
+
                 }
-                .frame(width: 150, height: 150)
-                .transition(.opacity.combined(with: .scale))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 10)
+                .padding(.horizontal)
 
+
+                VStack(alignment: .center) {
+                    Text("\(Int(viewModel.cadence))")
+                        .font(.system(size: 32, weight: .bold))
+                    Text("RPM")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.top, 10)
-            .padding(.horizontal)
-
-
-            VStack(alignment: .center) {
-                Text("\(Int(viewModel.cadence))")
-                    .font(.system(size: 32, weight: .bold))
-                Text("RPM")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+            .background {
+                Group {
+                    switch viewModel.backgroundLook {
+                    case .plain:
+                        EmptyView()
+                    case .bike:
+                        Image(systemName: "bicycle")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .opacity(0.15)
+                            .blur(radius: 2)
+                    case .rainbow:
+                        RainbowCircles()
+                            .opacity(0.5)
+                    case .earth:
+                        Image("globe")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .opacity(0.3)
+                            .blur(radius: 2)                    }
+                }
             }
-            .padding(.horizontal)
-            .frame(maxWidth: .infinity)
-
-
-            Divider()
-                .frame(height: 2)
 
             Group {
                 HStack(spacing:15) {
@@ -180,6 +200,10 @@ struct Dashboard: View {
                     },
                     onReset: {
                         viewModel.reset()
+                    },
+                    onSimulation: {
+                        viewModel.isSimulationMode.toggle()
+                        viewModel.startSimulation()
                     }
                 )
                 .padding()
@@ -187,12 +211,40 @@ struct Dashboard: View {
             }
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsView(
-                heartRateMonitor: viewModel.heartRateMonitor,
-                powerMonitor: viewModel.powerMonitor
-            )
+            SettingsView(dashboardViewModel: viewModel)
         }
         .preferredColorScheme(darkModeEnabled ? .dark : .light)
+    }
+}
+
+struct RainbowCircles: View {
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                ForEach((0..<20).reversed(), id: \.self) { index in
+                    let progress = Double(index) / 19.0
+                    // Create full rainbow spectrum: Red -> Orange -> Yellow -> Green -> Blue -> Purple
+                    let color = Color(
+                        hue: progress, // 0.0 (red) through 1.0 (back to red) covers full spectrum
+                        saturation: 0.8,
+                        brightness: 0.9
+                    )
+
+                    // Calculate size based on the geometry and index
+                    // Start with the largest circle fitting the bounds, then shrink
+                    let maxDimension = min(geometry.size.width, geometry.size.height)
+                    let size = maxDimension * (Double(index + 1) / 20.0)
+
+                    Circle()
+                        .fill(color)
+                        .frame(width: size, height: size)
+                        .opacity(0.3)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
+            }
+            .blur(radius: 2)
+        }
     }
 }
 
@@ -200,7 +252,8 @@ struct ControlPanel: View {
     let isRunning: Bool
     let onStartPause: () -> Void
     let onReset: () -> Void
-    
+    let onSimulation: () -> Void
+
     var body: some View {
         HStack(spacing: 20) {
             Button(action: onStartPause) {
@@ -227,6 +280,18 @@ struct ControlPanel: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+
+            Button(action: onSimulation) {
+                HStack {
+                    Image(systemName: "questionmark.circle.dashed")
+                }
+                .font(.title)
+                .foregroundStyle(Color("fairyRed"))
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
         .padding()
     }
@@ -240,11 +305,19 @@ extension Dashboard {
         case C
     }
 
+    enum BackgroundLook {
+        case earth
+        case bike
+        case rainbow
+        case plain
+    }
+
     @Observable
     final class ViewModel {
 
         var layout: MeterLayout = .A
-        
+        var backgroundLook: BackgroundLook = .bike
+
         let motionManager = MotionManager()
         let heartRateMonitor = HeartRateMonitor()
         let powerMonitor = PowerMonitor()
@@ -320,6 +393,10 @@ extension Dashboard {
         
         func reset() {
             stop()
+            
+            // Re-enable auto-lock when reset
+            UIApplication.shared.isIdleTimerDisabled = false
+            
             motionManager.stopTracking()
             motionManager.resetTracking()
             speed = 0.0
@@ -398,7 +475,7 @@ extension Dashboard {
         }
         
         // Simulation mode for testing UI (generates fake data)
-        private func startSimulation() {
+        func startSimulation() {
             guard isSimulationMode else { return }
             
             simulationTask = Task { @MainActor in
@@ -460,6 +537,9 @@ extension Dashboard {
         private func start() {
             isRunning = true
             
+            // Prevent device from auto-locking during workout
+            UIApplication.shared.isIdleTimerDisabled = true
+            
             // Start motion tracking
             motionManager.startTracking()
             
@@ -495,6 +575,10 @@ extension Dashboard {
         private func pause() {
             isRunning = false
             pausedTime = elapsedTime
+            
+            // Re-enable auto-lock when paused
+            UIApplication.shared.isIdleTimerDisabled = false
+            
             motionManager.stopTracking()
             speedTask?.cancel()
             speedTask = nil

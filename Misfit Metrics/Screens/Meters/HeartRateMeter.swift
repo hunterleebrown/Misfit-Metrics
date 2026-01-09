@@ -49,9 +49,8 @@ struct HeartRateMeter: View {
                     VStack(spacing: 2) {
                         Text("\(Int(heartRate))")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                        Text("bpm")
+                        Image(systemName: "heart.fill")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 } else {
                     // Not available state

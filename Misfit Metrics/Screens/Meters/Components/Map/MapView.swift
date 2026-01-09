@@ -21,7 +21,7 @@ struct MapView: View {
             MapCompass()
         }
         .mapStyle(.standard(elevation: .realistic))
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .topLeading) {
             Button {
                 isPresented = false
             } label: {

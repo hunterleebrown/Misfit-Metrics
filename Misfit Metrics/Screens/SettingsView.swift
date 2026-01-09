@@ -8,8 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Bindable var heartRateMonitor: HeartRateMonitor
-    @Bindable var powerMonitor: PowerMonitor
+    @Bindable var dashboardViewModel: Dashboard.ViewModel
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
@@ -24,23 +23,34 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    Picker("Background Style", selection: $dashboardViewModel.backgroundLook) {
+                        Text("Bicycle").tag(Dashboard.BackgroundLook.bike)
+                        Text("Rainbow").tag(Dashboard.BackgroundLook.rainbow)
+                        Text("Earth").tag(Dashboard.BackgroundLook.earth)
+                        Text("Plain").tag(Dashboard.BackgroundLook.plain)
+                    }
+                } header: {
+                    Text("Dashboard Background")
+                }
+                
+                Section {
                     NavigationLink {
-                        HeartRateMonitorView(heartRateMonitor: heartRateMonitor)
+                        HeartRateMonitorView(heartRateMonitor: dashboardViewModel.heartRateMonitor)
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "heart.circle.fill")
-                                .foregroundStyle(heartRateMonitor.isConnected ? Color.green : Color("fairyRed"))
+                                .foregroundStyle(dashboardViewModel.heartRateMonitor.isConnected ? Color.green : Color("fairyRed"))
                                 .font(.title2)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Heart Rate Monitor")
                                     .font(.body)
                                 
-                                if heartRateMonitor.isConnected {
-                                    Text("Connected • \(Int(heartRateMonitor.heartRate)) BPM")
+                                if dashboardViewModel.heartRateMonitor.isConnected {
+                                    Text("Connected • \(Int(dashboardViewModel.heartRateMonitor.heartRate)) BPM")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                } else if let lastDevice = heartRateMonitor.lastConnectedDeviceName {
+                                } else if let lastDevice = dashboardViewModel.heartRateMonitor.lastConnectedDeviceName {
                                     Text("Last: \(lastDevice)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -56,22 +66,22 @@ struct SettingsView: View {
                     }
                     
                     NavigationLink {
-                        PowerMonitorView(powerMonitor: powerMonitor)
+                        PowerMonitorView(powerMonitor: dashboardViewModel.powerMonitor)
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "bolt.circle.fill")
-                                .foregroundStyle(powerMonitor.isConnected ? Color.green : Color("fairyRed"))
+                                .foregroundStyle(dashboardViewModel.powerMonitor.isConnected ? Color.green : Color("fairyRed"))
                                 .font(.title2)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Power Meter")
                                     .font(.body)
                                 
-                                if powerMonitor.isConnected {
-                                    Text("Connected • \(Int(powerMonitor.threeSecondPower)) W")
+                                if dashboardViewModel.powerMonitor.isConnected {
+                                    Text("Connected • \(Int(dashboardViewModel.powerMonitor.threeSecondPower)) W")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                } else if let lastDevice = powerMonitor.lastConnectedDeviceName {
+                                } else if let lastDevice = dashboardViewModel.powerMonitor.lastConnectedDeviceName {
                                     Text("Last: \(lastDevice)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -103,8 +113,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(
-        heartRateMonitor: HeartRateMonitor(),
-        powerMonitor: PowerMonitor()
-    )
+    SettingsView(dashboardViewModel: Dashboard.ViewModel())
 }
