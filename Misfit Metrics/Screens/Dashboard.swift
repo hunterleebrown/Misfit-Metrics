@@ -11,305 +11,275 @@ struct Dashboard: View {
     @State private var viewModel = ViewModel()
     @State private var showingSettings = false
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
-
+    
     var body: some View {
-        VStack(spacing: 10) {
-
-            VStack {
-
-                // Duration Timer with Settings Button
-                HStack(alignment: .center, spacing: 16) {
-                    Spacer()
-
-                    Text(viewModel.formattedElapsedTime)
-                        .font(.system(size: 45, weight: .medium, design: .monospaced))
-
-                    Spacer()
-
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Image(systemName: "gear")
-                            .font(.title)
-                            .foregroundStyle(Color("fairyRed"))
+        NavigationStack {
+            VStack(spacing: 10) {
+                
+                VStack {
+                    
+                    // Duration Timer with Settings Button
+                    HStack(alignment: .center, spacing: 16) {
+                        NavigationLink {
+                            MisfitAdventures()
+                        } label: {
+                            Image(systemName: "list.bullet")
+                                .font(.title)
+                                .foregroundStyle(Color("fairyRed"))
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Spacer()
+                        
+                        Text(viewModel.formattedElapsedTime)
+                            .font(.system(size: 45, weight: .medium, design: .monospaced))
+                        
+                        Spacer()
+                        
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gear")
+                                .font(.title)
+                                .foregroundStyle(Color("fairyRed"))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal)
-
-                // Top meter (half circle)
-                Group {
-                    switch viewModel.layout {
-                    case .A:
-                        HalfCircleSpeedometer(speed: viewModel.speed)
-                    case .B:
-                        HalfCirclePowerMeter(power: viewModel.power)
-                    case .C:
-                        HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
-                    }
-                }
-                .frame(width: 300, height: 150)
-                .padding(.horizontal)
-                .transition(.opacity.combined(with: .scale))
-
-                // Bottom meters (two circles)
-                HStack(spacing: 20) {
+                    .padding(.horizontal)
+                    
+                    // Top meter (half circle)
                     Group {
                         switch viewModel.layout {
                         case .A:
-                            PowerMeter(power: viewModel.power)
+                            HalfCircleSpeedometer(speed: viewModel.speed)
                         case .B:
-                            HeartRateMeter(heartRate: viewModel.heartRate)
+                            HalfCirclePowerMeter(power: viewModel.power)
                         case .C:
-                            Speedometer(speed: viewModel.speed)
+                            HalfCircleHeartRateMeter(heartRate: viewModel.heartRate)
                         }
                     }
-                    .frame(width: 150, height: 150)
+                    .frame(width: 300, height: 150)
+                    .padding(.horizontal)
                     .transition(.opacity.combined(with: .scale))
-
-                    Button {
-                        viewModel.rotateMeters()
-                    } label: {
-                        Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
-                            .foregroundStyle(Color("fairyRed"))
-                            .fixedSize()
-                            .padding(10)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color("fairyRed"), lineWidth: 1)
+                    
+                    // Bottom meters (two circles)
+                    HStack(spacing: 20) {
+                        Group {
+                            switch viewModel.layout {
+                            case .A:
+                                PowerMeter(power: viewModel.power)
+                            case .B:
+                                HeartRateMeter(heartRate: viewModel.heartRate)
+                            case .C:
+                                Speedometer(speed: viewModel.speed)
                             }
+                        }
+                        .frame(width: 150, height: 150)
+                        .transition(.opacity.combined(with: .scale))
+                        
+                        Button {
+                            viewModel.rotateMeters()
+                        } label: {
+                            Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                                .foregroundStyle(Color("fairyRed"))
+                                .fixedSize()
+                                .padding(10)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color("fairyRed"), lineWidth: 1)
+                                }
+                        }
+                        
+                        Group {
+                            switch viewModel.layout {
+                            case .A:
+                                HeartRateMeter(heartRate: viewModel.heartRate)
+                            case .B:
+                                Speedometer(speed: viewModel.speed)
+                            case .C:
+                                PowerMeter(power: viewModel.power)
+                            }
+                        }
+                        .frame(width: 150, height: 150)
+                        .transition(.opacity.combined(with: .scale))
+                        
                     }
-
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 10)
+                    .padding(.horizontal)
+                    
+                    
+                    VStack(alignment: .center) {
+                        Text("\(Int(viewModel.cadence))")
+                            .font(.system(size: 32, weight: .bold))
+                        Text("RPM")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity)
+                }
+                .background {
                     Group {
-                        switch viewModel.layout {
-                        case .A:
-                            HeartRateMeter(heartRate: viewModel.heartRate)
-                        case .B:
-                            Speedometer(speed: viewModel.speed)
-                        case .C:
-                            PowerMeter(power: viewModel.power)
+                        switch viewModel.backgroundLook {
+                        case .plain:
+                            EmptyView()
+                        case .bike:
+                            Image(systemName: "bicycle")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .opacity(0.15)
+                                .blur(radius: 2)
+                        case .rainbow:
+                            RainbowCircles()
+                                .opacity(0.5)
+                        case .earth:
+                            Image("globe")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .opacity(0.3)
+                                .blur(radius: 2)
+                        case .userPhoto:
+                            if let photo = viewModel.userBackgroundPhoto {
+                                GeometryReader { geometry in
+                                    Image(uiImage: photo)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: geometry.size.width, height: geometry.size.height)
+                                        .clipped()
+                                        .opacity(0.3)
+                                        .blur(radius: 2)
+                                }
+                            } else {
+                                EmptyView()
+                            }
                         }
                     }
-                    .frame(width: 150, height: 150)
-                    .transition(.opacity.combined(with: .scale))
-
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 10)
-                .padding(.horizontal)
-
-
-                VStack(alignment: .center) {
-                    Text("\(Int(viewModel.cadence))")
-                        .font(.system(size: 32, weight: .bold))
-                    Text("RPM")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
+                
+                Group {
+                    HStack(spacing:15) {
+                        
+                        VStack(alignment: .center) {
+                            Text(viewModel.distanceValue)
+                                .font(.system(size: 32, weight: .bold))
+                            
+                            HStack(spacing: 2) {
+                                Text("distance")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                
+                                Text(viewModel.distanceUnit)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(width: 100)
+                        
+                        VStack(alignment: .center) {
+                            Text(String(format: "%.0f", viewModel.motionManager.gainedElevationInFeet))
+                                .font(.system(size: 32, weight: .bold))
+                            Text("gained elevation")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: 100)
+                        
+                        
+                        VStack(alignment: .center) {
+                            Text(String(format: "%.0f", viewModel.motionManager.currentElevationInFeet))
+                                .font(.system(size: 32, weight: .bold))
+                            Text("curr elevation")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: 100)
+                        
+                        
+                    }
                 }
                 .padding(.horizontal)
                 .frame(maxWidth: .infinity)
-            }
-            .background {
+                
+                Spacer()
+                
+                // Map
                 Group {
-                    switch viewModel.backgroundLook {
-                    case .plain:
-                        EmptyView()
-                    case .bike:
-                        Image(systemName: "bicycle")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .opacity(0.15)
-                            .blur(radius: 2)
-                    case .rainbow:
-                        RainbowCircles()
-                            .opacity(0.5)
-                    case .earth:
-                        Image("globe")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .opacity(0.3)
-                            .blur(radius: 2)
-                    case .userPhoto:
-                        if let photo = viewModel.userBackgroundPhoto {
-                            GeometryReader { geometry in
-                                Image(uiImage: photo)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: geometry.size.width, height: geometry.size.height)
-                                    .clipped()
-                                    .opacity(0.3)
-                                    .blur(radius: 2)
-                            }
-                        } else {
-                            EmptyView()
+                    if viewModel.mapViewToggle {
+                        MapView(isPresented: $viewModel.mapViewToggle)
+                            .edgesIgnoringSafeArea(.all)
+                    } else {
+                        Button("Map") {
+                            viewModel.mapViewToggle = true
                         }
+                        .foregroundStyle(Color("fairyRed"))
                     }
                 }
-            }
-
-            Group {
-                HStack(spacing:15) {
-
-                    VStack(alignment: .center) {
-                        Text(viewModel.distanceValue)
-                            .font(.system(size: 32, weight: .bold))
-
-                        HStack(spacing: 2) {
-                            Text("distance")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.secondary)
-
-                            Text(viewModel.distanceUnit)
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(width: 100)
-
-                    VStack(alignment: .center) {
-                        Text(String(format: "%.0f", viewModel.motionManager.gainedElevationInFeet))
-                            .font(.system(size: 32, weight: .bold))
-                        Text("gained elevation")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(width: 100)
-
-
-                    VStack(alignment: .center) {
-                        Text(String(format: "%.0f", viewModel.motionManager.currentElevationInFeet))
-                            .font(.system(size: 32, weight: .bold))
-                        Text("curr elevation")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(width: 100)
-
-
+                
+                Spacer()
+                
+                Group {
+                    ControlPanel(viewModel: viewModel)
+                        .padding()
+                        .frame(height: 50)
                 }
             }
-            .padding(.horizontal)
-            .frame(maxWidth: .infinity)
-
-            Spacer()
-
-            // Map
-            Group {
-                if viewModel.mapViewToggle {
-                    MapView(isPresented: $viewModel.mapViewToggle)
-                        .edgesIgnoringSafeArea(.all)
-                } else {
-                    Button("Map") {
-                        viewModel.mapViewToggle = true
-                    }
-                    .foregroundStyle(Color("fairyRed"))
-                }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(dashboardViewModel: viewModel)
             }
-
-            Spacer()
-
-            Group {
-                ControlPanel(
-                    isRunning: viewModel.isRunning,
-                    onStartPause: {
-                        viewModel.toggle()
-                    },
-                    onReset: {
-                        viewModel.reset()
-                    },
-                    onSimulation: {
-                        viewModel.isSimulationMode.toggle()
-                        viewModel.startSimulation()
-                    }
-                )
-                .padding()
-                .frame(height: 50)
-            }
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView(dashboardViewModel: viewModel)
-        }
-        .preferredColorScheme(darkModeEnabled ? .dark : .light)
-    }
-}
-
-struct RainbowCircles: View {
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                ForEach((0..<20).reversed(), id: \.self) { index in
-                    let progress = Double(index) / 19.0
-                    // Create full rainbow spectrum: Red -> Orange -> Yellow -> Green -> Blue -> Purple
-                    let color = Color(
-                        hue: progress, // 0.0 (red) through 1.0 (back to red) covers full spectrum
-                        saturation: 0.8,
-                        brightness: 0.9
-                    )
-
-                    // Calculate size based on the geometry and index
-                    // Start with the largest circle fitting the bounds, then shrink
-                    let maxDimension = min(geometry.size.width, geometry.size.height)
-                    let size = maxDimension * (Double(index + 1) / 20.0)
-
-                    Circle()
-                        .fill(color)
-                        .frame(width: size, height: size)
-                        .opacity(0.3)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                }
-            }
-            .blur(radius: 2)
+            .preferredColorScheme(darkModeEnabled ? .dark : .light)
         }
     }
 }
 
-struct ControlPanel: View {
-    let isRunning: Bool
-    let onStartPause: () -> Void
-    let onReset: () -> Void
-    let onSimulation: () -> Void
+extension Dashboard {
+    struct ControlPanel: View {
+        @Bindable var viewModel: Dashboard.ViewModel
 
-    var body: some View {
-        HStack(spacing: 20) {
-            Button(action: onStartPause) {
-                HStack {
-                    Image(systemName: isRunning ? "pause.fill" : "play.fill")
+        var body: some View {
+            HStack(spacing: 20) {
+                Button(action: { viewModel.toggle() }) {
+                    Image(systemName: viewModel.isRunning ? "pause.fill" : "play.fill")
+                        .font(.title)
+                        .foregroundStyle(Color("fairyRed"))
+                        .fixedSize(horizontal: true, vertical: true)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
                 }
-                .font(.title)
-                .foregroundStyle(Color("fairyRed"))
-                .fixedSize(horizontal: true, vertical: true)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            
-            Button(action: onReset) {
-                HStack {
+                .buttonStyle(.plain)
+
+                Button(action: { viewModel.stopWorkout() }) {
+                    Image(systemName: "stop.fill")
+                        .font(.title)
+                        .foregroundStyle(Color("fairyRed"))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: { viewModel.reset() }) {
                     Image(systemName: "arrow.counterclockwise")
+                        .font(.title)
+                        .foregroundStyle(Color("fairyRed"))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
                 }
-                .font(.title)
-                .foregroundStyle(Color("fairyRed"))
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
 
-            Button(action: onSimulation) {
-                HStack {
+                Button(action: {
+                    viewModel.isSimulationMode.toggle()
+                    viewModel.startSimulation()
+                }) {
                     Image(systemName: "questionmark.circle.dashed")
+                        .font(.title)
+                        .foregroundStyle(Color("fairyRed"))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
                 }
-                .font(.title)
-                .foregroundStyle(Color("fairyRed"))
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .clipShape(Capsule())
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding()
         }
-        .padding()
     }
 }
 
@@ -454,6 +424,20 @@ extension Dashboard {
             if !heartRateMonitor.isConnected {
                 heartRate = 0.0
             }
+        }
+        
+        func stopWorkout() {
+            // Stop the workout but preserve all the data
+            // This is useful for ending a ride session before saving
+            stop()
+            
+            // Re-enable auto-lock when stopped
+            UIApplication.shared.isIdleTimerDisabled = false
+            
+            motionManager.stopTracking()
+            
+            // Keep all the accumulated data (distance, elevation, time, etc.)
+            // This will be useful when you add @Model classes to save the ride
         }
 
         func rotateMeters() {

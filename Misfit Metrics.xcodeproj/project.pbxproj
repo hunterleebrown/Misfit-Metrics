@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5A3970AD2F118C32002B3CB3 /* FITSwiftSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5A3970AC2F118C32002B3CB3 /* FITSwiftSDK */; };
 		5AA4D3152F0F635300174051 /* ci_post_xcodebuild.sh in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3122F0F635300174051 /* ci_post_xcodebuild.sh */; };
 		5AA4D3162F0F635300174051 /* ci_post_clone.sh in Resources */ = {isa = PBXBuildFile; fileRef = 5AA4D3132F0F635300174051 /* ci_post_clone.sh */; };
 /* End PBXBuildFile section */
@@ -31,6 +32,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A3970AD2F118C32002B3CB3 /* FITSwiftSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			);
 			name = "Misfit Metrics";
 			packageProductDependencies = (
+				5A3970AC2F118C32002B3CB3 /* FITSwiftSDK */,
 			);
 			productName = "Misfit Metrics";
 			productReference = 5AA4D2C12F0EF3E400174051 /* Misfit Metrics.app */;
@@ -113,6 +116,9 @@
 			);
 			mainGroup = 5AA4D2B82F0EF3E400174051;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5A3970AB2F118C32002B3CB3 /* XCRemoteSwiftPackageReference "fit-swift-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5AA4D2C22F0EF3E400174051 /* Products */;
 			projectDirPath = "";
@@ -365,6 +371,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5A3970AB2F118C32002B3CB3 /* XCRemoteSwiftPackageReference "fit-swift-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/garmin/fit-swift-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 21.188.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5A3970AC2F118C32002B3CB3 /* FITSwiftSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5A3970AB2F118C32002B3CB3 /* XCRemoteSwiftPackageReference "fit-swift-sdk" */;
+			productName = FITSwiftSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5AA4D2B92F0EF3E400174051 /* Project object */;
 }
