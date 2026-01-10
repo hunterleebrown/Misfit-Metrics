@@ -13,7 +13,8 @@ struct Misfit_MetricsApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             MisfitAdventure.self,
-            MisfitRecord.self
+            MisfitRecord.self,
+            StravaAthlete.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
