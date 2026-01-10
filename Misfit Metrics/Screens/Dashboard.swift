@@ -230,7 +230,7 @@ struct Dashboard: View {
                 SettingsView(dashboardViewModel: viewModel)
             }
             .preferredColorScheme(darkModeEnabled ? .dark : .light)
-            .onAppear {
+            .task {
                 viewModel.modelContext = modelContext
             }
         }

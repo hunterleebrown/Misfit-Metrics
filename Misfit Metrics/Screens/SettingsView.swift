@@ -7,16 +7,104 @@
 
 import SwiftUI
 import PhotosUI
+import Combine
+import KeychainSwift
 
 struct SettingsView: View {
     @Bindable var dashboardViewModel: Dashboard.ViewModel
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @StateObject private var stravaAuth = StravaAuthenticationSession.shared
+    @StateObject private var stravaAuthViewModel = StravaAuthorizationViewModel()
     
     var body: some View {
         NavigationStack {
             List {
+                // Strava Section
+                Section {
+                    if stravaAuth.isAuthenticated {
+                        // Authenticated State
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.green)
+                                .font(.title2)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Connected to Strava")
+                                    .font(.body)
+                                
+                                if let athlete = Settings.shared.getAuthResponse()?.athlete,
+                                   let name = athlete.fullName {
+                                    Text(name)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Account active")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        Button(role: .destructive) {
+                            logoutFromStrava()
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.right.square")
+                                Text("Disconnect")
+                            }
+                        }
+                        
+                        // Debug link (remove in production)
+                        NavigationLink("Debug Info") {
+                            StravaDebugView()
+                        }
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                    } else {
+                        // Not Authenticated State
+                        Button {
+                            stravaAuthViewModel.authenticate()
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "figure.outdoor.cycle")
+                                    .foregroundStyle(Color("fairyRed"))
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Connect to Strava")
+                                        .font(.body)
+                                    
+                                    Text("Upload activities and sync your rides")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Strava")
+                } footer: {
+                    if stravaAuth.isAuthenticated {
+                        if let expiresAt = Settings.shared.getAuthResponse()?.expiresAt {
+                            let expireDate = Date(timeIntervalSince1970: Double(expiresAt))
+                            Text("Access expires: \(expireDate.formatted(date: .abbreviated, time: .shortened))")
+                        }
+                    } else {
+                        Text("Connect your Strava account to automatically upload your rides and access your activity history.")
+                    }
+                }
+                
                 Section {
                     Toggle("Dark Mode", isOn: $darkModeEnabled)
                 } header: {
@@ -138,10 +226,29 @@ struct SettingsView: View {
                     }
                 }
             }
+            .onAppear {
+                setupStravaLoginListener()
+            }
         }
     }
-}
-
-#Preview {
-    SettingsView(dashboardViewModel: Dashboard.ViewModel())
+    
+    // MARK: - Strava Methods
+    
+    private func setupStravaLoginListener() {
+        _ = StravaAuthorizationViewModel.loginEvent
+            .sink { success in
+                if success {
+                    // Refresh authentication state
+                    stravaAuth.updateAuthentication(loggedIn: true)
+                    stravaAuth.checkExpiration()
+                }
+            }
+    }
+    
+    private func logoutFromStrava() {
+        Settings.shared.removeAuthResponse()
+        Settings.shared.keychain.delete("token")
+        stravaAuth.updateAuthentication(loggedIn: false)
+        stravaAuth.expireyDate = nil
+    }
 }

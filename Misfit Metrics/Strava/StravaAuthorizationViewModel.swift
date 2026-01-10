@@ -21,17 +21,23 @@ class StravaAuthorizationViewModel: NSObject, ObservableObject {
     let webOAuthUrl = URL(string: "https://www.strava.com/oauth/mobile/authorize?client_id=\(StravaConfig.shared.stravaValue(.client_id)!)&redirect_uri=\(StravaConfig.shared.stravaValue(.appname)!)%3A%2F%2F\(StravaConfig.shared.stravaValue(.website)!)&response_type=code&approval_prompt=auto&scope=\(scope)&state=test")!
 
     func authenticate() {
+        // Check if Strava app is installed and can handle the auth
         if UIApplication.shared.canOpenURL(appOAuthUrlStravaScheme) {
+            // Open Strava app directly - the callback will be handled by .onOpenURL in the main app
             UIApplication.shared.open(appOAuthUrlStravaScheme, options: [:])
         } else {
+            // Use ASWebAuthenticationSession for web-based auth
+            // Note: ASWebAuthenticationSession only supports HTTP/HTTPS URLs
             asWebAuthSession = ASWebAuthenticationSession(
                 url: webOAuthUrl,
-                callbackURLScheme: "\(Bundle.main.bundleIdentifier!)") { url, error in
-                    guard let url = url, let code = StravaAuthenticationSession.shared.getStravaCode(url: url) else { return }
+                callbackURLScheme: "misfit-metrics") { url, error in
+                    guard let url = url, let code = StravaAuthenticationSession.shared.getStravaCode(url: url) else { 
+                        return 
+                    }
                     StravaAuthenticationSession.shared.fetchStravaToken(stravCode: code)
             }
             asWebAuthSession?.presentationContextProvider = self
-            asWebAuthSession?.prefersEphemeralWebBrowserSession = true
+            asWebAuthSession?.prefersEphemeralWebBrowserSession = false  // Allow cookie sharing for better UX
             asWebAuthSession?.start()
         }
     }

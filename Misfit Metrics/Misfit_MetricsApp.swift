@@ -28,7 +28,23 @@ struct Misfit_MetricsApp: App {
     var body: some Scene {
         WindowGroup {
             Dashboard()
+                .onOpenURL { url in
+                    // Handle deep link from Strava app
+                    handleStravaCallback(url: url)
+                }
         }
         .modelContainer(sharedModelContainer)
+    }
+    
+    private func handleStravaCallback(url: URL) {
+        // Check if this is a Strava callback URL
+        // Expected format: misfit-metrics://www.hunterleebrown.com?code=...&state=test
+        guard url.scheme == "misfit-metrics",
+              let code = StravaAuthenticationSession.shared.getStravaCode(url: url) else {
+            return
+        }
+        
+        // Exchange the code for a token
+        StravaAuthenticationSession.shared.fetchStravaToken(stravCode: code)
     }
 }
