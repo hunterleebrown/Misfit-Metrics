@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct MisfitAdventures: View {
     @Environment(\.modelContext) private var modelContext
@@ -76,6 +77,9 @@ struct MisfitAdventures: View {
 struct AdventureRow: View {
     let adventure: MisfitAdventure
     
+    @State private var shareItem: FITFileItem?
+    @State private var isGenerating = false
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Date and time
@@ -114,6 +118,75 @@ struct AdventureRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            if isGenerating {
+                Button {
+                    // Still generating
+                } label: {
+                    Label("Generating FIT file...", systemImage: "hourglass")
+                }
+                .disabled(true)
+            } else if let item = shareItem {
+                ShareLink(item: item, preview: SharePreview(item.filename, image: Image(systemName: "bicycle")))
+            } else {
+                Button {
+                    Task {
+                        await generateShareItem()
+                    }
+                } label: {
+                    Label("Export & Share", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
+        .task {
+            // Pre-generate in background when row appears
+            if shareItem == nil && !isGenerating {
+                await generateShareItem()
+            }
+        }
+    }
+    
+    private func generateShareItem() async {
+        // Prevent multiple simultaneous generations
+        guard !isGenerating else { return }
+        
+        isGenerating = true
+        print("🔄 Starting FIT file generation for \(adventure.records.count) records...")
+        
+        let startTime = Date()
+        
+        // Use a regular Task that inherits the MainActor context
+        // This allows us to safely access the SwiftData model
+        let result = await Task { @MainActor in
+            do {
+                // Create encoder and encode on the main actor
+                // SwiftData models must be accessed on the main actor
+                let encoder = MisfitFITEncoder()
+                let fitData = try encoder.encode(adventure: adventure)
+                let filename = encoder.suggestedFilename(for: adventure)
+                
+                // File I/O is safe to do here
+                let tempDirectory = FileManager.default.temporaryDirectory
+                let fileURL = tempDirectory.appendingPathComponent(filename)
+                try fitData.write(to: fileURL)
+                
+                return Result<FITFileItem, Error>.success(FITFileItem(url: fileURL, filename: filename))
+            } catch {
+                return Result<FITFileItem, Error>.failure(error)
+            }
+        }.value
+        
+        let duration = Date().timeIntervalSince(startTime)
+        
+        isGenerating = false
+        
+        switch result {
+        case .success(let item):
+            print("✅ Generated FIT file: \(item.filename) in \(String(format: "%.2f", duration))s")
+            shareItem = item
+        case .failure(let error):
+            print("❌ Failed to generate FIT file: \(error)")
+        }
     }
     
     private func formatDistance(_ miles: Double) -> String {
@@ -134,6 +207,18 @@ struct AdventureRow: View {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+}
+
+// Transferable wrapper for FIT files to work with ShareLink
+struct FITFileItem: Transferable {
+    let url: URL
+    let filename: String
+    
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .data) { item in
+            SentTransferredFile(item.url)
         }
     }
 }
