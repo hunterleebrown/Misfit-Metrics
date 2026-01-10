@@ -9,9 +9,6 @@ import Foundation
 import FITSwiftSDK
 
 /// Encodes MisfitAdventure objects into FIT files using the FITSwiftSDK
-@available(*, unavailable)
-extension MisfitFITEncoder: Sendable {}
-
 final class MisfitFITEncoder: @unchecked Sendable {
     
     enum EncoderError: Error {
