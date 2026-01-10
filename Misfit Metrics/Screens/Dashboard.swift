@@ -6,8 +6,10 @@
 //
 import SwiftUI
 import PhotosUI
+import SwiftData
 
 struct Dashboard: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var viewModel = ViewModel()
     @State private var showingSettings = false
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
@@ -228,6 +230,9 @@ struct Dashboard: View {
                 SettingsView(dashboardViewModel: viewModel)
             }
             .preferredColorScheme(darkModeEnabled ? .dark : .light)
+            .onAppear {
+                viewModel.modelContext = modelContext
+            }
         }
     }
 }
@@ -335,6 +340,11 @@ extension Dashboard {
         var elapsedTime: TimeInterval = 0
 
         var mapViewToggle: Bool = false
+        
+        // SwiftData
+        var modelContext: ModelContext?
+        private var currentAdventure: MisfitAdventure?
+        private var recordTask: Task<Void, Never>?
 
         // Computed property to check if heart rate monitor is connected
         var isHeartRateConnected: Bool {
@@ -424,11 +434,21 @@ extension Dashboard {
             if !heartRateMonitor.isConnected {
                 heartRate = 0.0
             }
+            
+            // Delete the current adventure if it exists (user cancelled)
+            if let adventure = currentAdventure, let modelContext = modelContext {
+                modelContext.delete(adventure)
+                try? modelContext.save()
+                currentAdventure = nil
+            }
+            
+            // Stop recording
+            recordTask?.cancel()
+            recordTask = nil
         }
         
         func stopWorkout() {
-            // Stop the workout but preserve all the data
-            // This is useful for ending a ride session before saving
+            // Stop the workout and finalize the adventure
             stop()
             
             // Re-enable auto-lock when stopped
@@ -436,8 +456,33 @@ extension Dashboard {
             
             motionManager.stopTracking()
             
-            // Keep all the accumulated data (distance, elevation, time, etc.)
-            // This will be useful when you add @Model classes to save the ride
+            // Finalize the adventure with summary data
+            if let adventure = currentAdventure, let modelContext = modelContext {
+                adventure.endTime = Date()
+                adventure.totalDistance = motionManager.distanceInMiles
+                
+                // Calculate average heart rate from records (if we had heart rate data)
+                let heartRates = adventure.records.compactMap { _ in heartRate > 0 ? Int(heartRate) : nil }
+                if !heartRates.isEmpty {
+                    adventure.averageHeartRate = heartRates.reduce(0, +) / heartRates.count
+                }
+                
+                // Calculate average power from records (if we had power data)
+                let powers = adventure.records.compactMap { _ in power }
+                if !powers.isEmpty {
+                    adventure.averagePower = powers.reduce(0, +) / Double(powers.count)
+                }
+                
+                // Save the final state
+                try? modelContext.save()
+                
+                // Clear current adventure
+                currentAdventure = nil
+            }
+            
+            // Stop recording
+            recordTask?.cancel()
+            recordTask = nil
         }
 
         func rotateMeters() {
@@ -572,13 +617,28 @@ extension Dashboard {
             motionManager.startTracking()
             
             if startTime == nil {
-                // First time starting
+                // First time starting - create new adventure
                 startTime = Date()
                 elapsedTime = 0
                 pausedTime = 0
+                
+                // Create new MisfitAdventure
+                if let modelContext = modelContext {
+                    let adventure = MisfitAdventure(startTime: Date())
+                    modelContext.insert(adventure)
+                    currentAdventure = adventure
+                    
+                    // Start recording data every second
+                    startRecording()
+                }
             } else {
                 // Resuming from pause
                 startTime = Date().addingTimeInterval(-pausedTime)
+                
+                // Resume recording if we have an adventure
+                if currentAdventure != nil {
+                    startRecording()
+                }
             }
             
             // Timer task to update elapsed time
@@ -614,6 +674,35 @@ extension Dashboard {
             simulationTask = nil
             timerTask?.cancel()
             timerTask = nil
+            
+            // Stop recording
+            recordTask?.cancel()
+            recordTask = nil
+        }
+        
+        // Start recording data every second
+        private func startRecording() {
+            recordTask?.cancel() // Cancel any existing task
+            
+            recordTask = Task { @MainActor in
+                while !Task.isCancelled && isRunning {
+                    // Create a new record with current data
+                    if let adventure = currentAdventure, let modelContext = modelContext {
+                        let record = MisfitRecord(
+                            timestamp: Date(),
+                            speed: speed
+                        )
+                        
+                        modelContext.insert(record)
+                        adventure.records.append(record)
+                        
+                        // Save context periodically
+                        try? modelContext.save()
+                    }
+                    
+                    try? await Task.sleep(for: .seconds(1))
+                }
+            }
         }
         
         private func stop() {
