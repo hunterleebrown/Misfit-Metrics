@@ -675,9 +675,14 @@ extension Dashboard {
             timerTask?.cancel()
             timerTask = nil
             
-            // Stop recording
+            // Stop recording and save any unsaved records
             recordTask?.cancel()
             recordTask = nil
+            
+            // Save any pending records when pausing
+            if let modelContext = modelContext {
+                try? modelContext.save()
+            }
         }
         
         // Start recording data every second
@@ -686,21 +691,38 @@ extension Dashboard {
             
             recordTask = Task { @MainActor in
                 while !Task.isCancelled && isRunning {
+                    let recordStartTime = Date()
+                    
                     // Create a new record with current data
                     if let adventure = currentAdventure, let modelContext = modelContext {
+                        // Get current location from motion manager
+                        let location = motionManager.location
+                        
                         let record = MisfitRecord(
-                            timestamp: Date(),
-                            speed: speed
+                            timestamp: recordStartTime,
+                            latitude: location?.coordinate.latitude,
+                            longitude: location?.coordinate.longitude,
+                            altitude: location?.altitude,
+                            heartRate: heartRate > 0 ? Int(heartRate) : nil,
+                            power: power,
+                            speed: speed,
+                            cadence: cadence > 0 ? Int(cadence) : nil,
+                            distance: motionManager.distanceInMiles
                         )
                         
                         modelContext.insert(record)
                         adventure.records.append(record)
                         
-                        // Save context periodically
-                        try? modelContext.save()
+                        // Save context periodically (every 10 records to reduce overhead)
+                        if adventure.records.count % 10 == 0 {
+                            try? modelContext.save()
+                        }
                     }
                     
-                    try? await Task.sleep(for: .seconds(1))
+                    // Sleep for exactly 1 second from when we started this iteration
+                    let elapsed = Date().timeIntervalSince(recordStartTime)
+                    let remainingSleep = max(0, 1.0 - elapsed)
+                    try? await Task.sleep(for: .seconds(remainingSleep))
                 }
             }
         }

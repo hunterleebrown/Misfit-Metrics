@@ -35,11 +35,42 @@ final class MisfitAdventure {
 final class MisfitRecord {
     var id: UUID
     var timestamp: Date
-    var speed: Double?
     
-    init(id: UUID = UUID(), timestamp: Date, speed: Double? = nil) {
+    // Location data
+    var latitude: Double?
+    var longitude: Double?
+    var altitude: Double?  // in meters
+    
+    // Performance metrics
+    var heartRate: Int?
+    var power: Double?
+    var speed: Double?  // in mph
+    var cadence: Int?  // RPM
+    
+    // Cumulative distance in miles
+    var distance: Double
+    
+    init(
+        id: UUID = UUID(),
+        timestamp: Date,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        altitude: Double? = nil,
+        heartRate: Int? = nil,
+        power: Double? = nil,
+        speed: Double? = nil,
+        cadence: Int? = nil,
+        distance: Double = 0
+    ) {
         self.id = id
         self.timestamp = timestamp
+        self.latitude = latitude
+        self.longitude = longitude
+        self.altitude = altitude
+        self.heartRate = heartRate
+        self.power = power
         self.speed = speed
+        self.cadence = cadence
+        self.distance = distance
     }
 }

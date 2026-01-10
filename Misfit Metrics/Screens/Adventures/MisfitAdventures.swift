@@ -20,9 +20,18 @@ struct MisfitAdventures: View {
         List {
             ForEach(adventures) { adventure in
                 AdventureRow(adventure: adventure)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.secondarySystemGroupedBackground))
+                            .padding(.vertical, 4)
+                    )
             }
             .onDelete(perform: handleDelete)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Adventures")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

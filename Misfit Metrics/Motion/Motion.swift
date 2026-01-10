@@ -20,6 +20,9 @@ class MotionManager: NSObject {
     private var lastLocation: CLLocation?
     private var isTracking: Bool = false
     
+    // Current location for recording
+    var location: CLLocation?
+    
     // Computed property for distance in miles
     var distanceInMiles: Double {
         Measurement(value: distance, unit: UnitLength.meters)
@@ -82,6 +85,9 @@ extension MotionManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let newLocation = locations.last else { return }
 
+        // Always update current location
+        location = newLocation
+        
         // Only accumulate distance and elevation when actively tracking
         if isTracking, let lastLoc = lastLocation {
             // Calculate distance traveled
