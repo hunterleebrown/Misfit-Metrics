@@ -85,7 +85,7 @@ struct AdventureRow: View {
             // Stats row
             HStack(spacing: 16) {
                 if let distance = adventure.totalDistance {
-                    Label(String(format: "%.1f mi", distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
+                    Label(formatDistance(distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
                         .font(.subheadline)
                 }
                 
@@ -114,6 +114,15 @@ struct AdventureRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
+    }
+    
+    private func formatDistance(_ miles: Double) -> String {
+        if miles < 0.25 {
+            let feet = miles * 5280
+            return String(format: "%.0f ft", feet)
+        } else {
+            return String(format: "%.1f mi", miles)
+        }
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
