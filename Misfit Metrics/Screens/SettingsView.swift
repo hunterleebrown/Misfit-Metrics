@@ -18,6 +18,8 @@ struct SettingsView: View {
     @StateObject private var stravaAuth = StravaAuthenticationSession.shared
     @StateObject private var stravaAuthViewModel = StravaAuthorizationViewModel()
     
+    @State private var loginSubscription: AnyCancellable?
+    
     var body: some View {
         NavigationStack {
             List {
@@ -226,7 +228,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .onAppear {
+            .task {
                 setupStravaLoginListener()
             }
         }
@@ -235,7 +237,8 @@ struct SettingsView: View {
     // MARK: - Strava Methods
     
     private func setupStravaLoginListener() {
-        _ = StravaAuthorizationViewModel.loginEvent
+        loginSubscription = StravaAuthorizationViewModel.loginEvent
+            .receive(on: DispatchQueue.main)
             .sink { success in
                 if success {
                     // Refresh authentication state

@@ -14,6 +14,17 @@ class StravaAuthenticationSession: ObservableObject {
 
     func updateAuthentication(loggedIn: Bool) {
         isAuthenticated = loggedIn
+        
+        // If logging in, reload the expiry date from saved credentials
+        if loggedIn {
+            if let stravaResponse = Settings.shared.getAuthResponse(),
+               let expiresDate = stravaResponse.expiresAt {
+                expireyDate = Date(timeIntervalSince1970: Double(expiresDate))
+                checkExpiration()
+            }
+        } else {
+            expireyDate = nil
+        }
     }
 
     static let shared = StravaAuthenticationSession()

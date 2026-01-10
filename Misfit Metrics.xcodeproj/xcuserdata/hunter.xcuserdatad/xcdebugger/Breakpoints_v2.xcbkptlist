@@ -48,38 +48,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "57"
             endingLineNumber = "57"
-            landmarkName = "fetchStravaToken(stravCode:)"
+            landmarkName = "checkExpiration()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "FD58524D-AAAB-4867-B4D2-E31183D32D51 - 70c65224da01cfe0"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Misfit_Metrics.StravaAuthenticationSession.fetchStravaToken(stravCode: Swift.String) -&gt; ()"
-                  moduleName = "Misfit Metrics.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/hunter/Projects/_Misfit%20Metrics/Misfit-Metrics/Misfit%20Metrics/Strava/StravaAuthenticationSession.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "58"
-                  endingLineNumber = "58">
-               </Location>
-               <Location
-                  uuid = "FD58524D-AAAB-4867-B4D2-E31183D32D51 - 80aad51ecbeda2f8"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 () async -&gt; () in Misfit_Metrics.StravaAuthenticationSession.fetchStravaToken(stravCode: Swift.String) -&gt; ()"
-                  moduleName = "Misfit Metrics.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/hunter/Projects/_Misfit%20Metrics/Misfit-Metrics/Misfit%20Metrics/Strava/StravaAuthenticationSession.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "58"
-                  endingLineNumber = "58">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
