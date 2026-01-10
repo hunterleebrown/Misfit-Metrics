@@ -6,14 +6,14 @@
 //
 
 import Foundation
-import SwiftUI
 import SwiftData
 
 @Model
 final class MisfitAdventure {
-    var id: UUID = UUID()
     var startTime: Date
     var endTime: Date?
+    
+    @Relationship(deleteRule: .cascade)
     var records: [MisfitRecord] = []
 
     // Summary data (calculated when stopped)
@@ -31,8 +31,15 @@ final class MisfitAdventure {
     }
 }
 
-struct MisfitRecord: Codable, Identifiable {
-    var id: UUID = UUID()
+@Model
+final class MisfitRecord {
+    var id: UUID
     var timestamp: Date
     var speed: Double?
+    
+    init(id: UUID = UUID(), timestamp: Date, speed: Double? = nil) {
+        self.id = id
+        self.timestamp = timestamp
+        self.speed = speed
+    }
 }
