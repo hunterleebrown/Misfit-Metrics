@@ -88,12 +88,12 @@ struct AdventureRow: View {
             // Stats row
             HStack(spacing: 16) {
                 if let distance = adventure.totalDistance {
-                    Label(formatDistance(distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
+                    Label(adventure.formattedDistance(distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
                         .font(.subheadline)
                 }
                 
                 if let duration = adventure.endTime?.timeIntervalSince(adventure.startTime) {
-                    Label(formatDuration(duration), systemImage: "clock")
+                    Label(adventure.formattedDuration(duration), systemImage: "clock")
                         .font(.subheadline)
                 }
                 
@@ -127,27 +127,6 @@ struct AdventureRow: View {
                 .presentationDragIndicator(.visible)
         }
     }
-    
-    private func formatDistance(_ miles: Double) -> String {
-        if miles < 0.25 {
-            let feet = miles * 5280
-            return String(format: "%.0f ft", feet)
-        } else {
-            return String(format: "%.1f mi", miles)
-        }
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let hours = Int(duration) / 3600
-        let minutes = Int(duration) / 60 % 60
-        let seconds = Int(duration) % 60
-        
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%d:%02d", minutes, seconds)
-        }
-    }
 }
 
 // Transferable wrapper for FIT files to work with ShareLink
@@ -158,6 +137,31 @@ struct FITFileItem: Transferable {
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .data) { item in
             SentTransferredFile(item.url)
+        }
+    }
+}
+
+// MARK: - Formatting Helpers
+
+extension MisfitAdventure {
+    func formattedDistance(_ miles: Double) -> String {
+        if miles < 0.25 {
+            let feet = miles * 5280
+            return String(format: "%.0f ft", feet)
+        } else {
+            return String(format: "%.1f mi", miles)
+        }
+    }
+    
+    func formattedDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) / 60 % 60
+        let seconds = Int(duration) % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
         }
     }
 }
@@ -253,7 +257,7 @@ struct StravaUploadSheet: View {
                         Spacer()
                         
                         if let distance = adventure.totalDistance {
-                            Label(formatDistance(distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
+                            Label(adventure.formattedDistance(distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
                                 .font(.caption)
                         }
                     }
@@ -337,7 +341,7 @@ struct StravaUploadSheet: View {
             let status = try await uploadService.checkUploadStatus(uploadId: uploadId)
             uploadResponse = status
             
-            if let activityId = status.activityId {
+            if status.activityId != nil {
                 uploadStatus = .success
                 return
             } else if status.status == "error" {
@@ -350,15 +354,6 @@ struct StravaUploadSheet: View {
         // If we get here, still processing but we'll stop polling
         uploadStatus = .success
         errorMessage = "Upload is processing. Check Strava in a few moments."
-    }
-    
-    private func formatDistance(_ miles: Double) -> String {
-        if miles < 0.25 {
-            let feet = miles * 5280
-            return String(format: "%.0f ft", feet)
-        } else {
-            return String(format: "%.1f mi", miles)
-        }
     }
 }
 
@@ -382,8 +377,11 @@ final class ExportViewModel {
         // Prevent multiple simultaneous generations
         guard !isGenerating, shareItem == nil else { return }
         
-        isGenerating = true
-        errorMessage = nil
+        // Animate the loading state
+        withAnimation {
+            isGenerating = true
+            errorMessage = nil
+        }
         
         // Show estimated time for large datasets
         if adventure.records.count > 5000 {
@@ -394,6 +392,8 @@ final class ExportViewModel {
         
         let startTime = Date()
         
+        // Do the heavy work without animation
+        let result: Result<FITFileItem, Error>
         do {
             // Create encoder and encode
             // SwiftData models must be accessed on the main actor
@@ -409,14 +409,23 @@ final class ExportViewModel {
             let duration = Date().timeIntervalSince(startTime)
             print("✅ Generated FIT file: \(filename) (\(adventure.records.count) records) in \(String(format: "%.2f", duration))s")
             
-            shareItem = FITFileItem(url: fileURL, filename: filename)
-            
+            result = .success(FITFileItem(url: fileURL, filename: filename))
         } catch {
             print("❌ Failed to generate FIT file: \(error)")
-            errorMessage = error.localizedDescription
+            result = .failure(error)
         }
         
-        isGenerating = false
+        // Animate only the state update
+        withAnimation {
+            isGenerating = false
+            
+            switch result {
+            case .success(let item):
+                shareItem = item
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+            }
+        }
     }
     
     func cleanup() {
@@ -460,7 +469,7 @@ struct ExportSheet: View {
                     HStack(spacing: 20) {
                         if let distance = viewModel.adventure.totalDistance {
                             VStack(spacing: 4) {
-                                Text(formatDistance(distance))
+                                Text(viewModel.adventure.formattedDistance(distance))
                                     .font(.title3)
                                     .fontWeight(.semibold)
                                 Text("Distance")
@@ -471,7 +480,7 @@ struct ExportSheet: View {
                         
                         if let duration = viewModel.adventure.endTime?.timeIntervalSince(viewModel.adventure.startTime) {
                             VStack(spacing: 4) {
-                                Text(formatDuration(duration))
+                                Text(viewModel.adventure.formattedDuration(duration))
                                     .font(.title3)
                                     .fontWeight(.semibold)
                                 Text("Duration")
@@ -515,6 +524,7 @@ struct ExportSheet: View {
                             .cornerRadius(12)
                         }
                         .disabled(viewModel.isGenerating)
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
                         
                         if viewModel.adventure.records.count > 5000 {
                             HStack(spacing: 6) {
@@ -531,6 +541,7 @@ struct ExportSheet: View {
                             Label(error, systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.red)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                         
                     } else if let item = viewModel.shareItem {
@@ -573,6 +584,10 @@ struct ExportSheet: View {
                                 }
                             }
                         }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.9)),
+                            removal: .opacity
+                        ))
                     }
                 }
                 .padding(.horizontal)
@@ -597,27 +612,6 @@ struct ExportSheet: View {
             if let item = viewModel.shareItem {
                 StravaUploadSheet(fitFileItem: item, adventure: viewModel.adventure)
             }
-        }
-    }
-    
-    private func formatDistance(_ miles: Double) -> String {
-        if miles < 0.25 {
-            let feet = miles * 5280
-            return String(format: "%.0f ft", feet)
-        } else {
-            return String(format: "%.1f mi", miles)
-        }
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let hours = Int(duration) / 3600
-        let minutes = Int(duration) / 60 % 60
-        let seconds = Int(duration) % 60
-        
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%d:%02d", minutes, seconds)
         }
     }
 }
