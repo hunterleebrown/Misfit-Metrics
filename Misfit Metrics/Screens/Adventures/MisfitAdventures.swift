@@ -77,12 +77,7 @@ struct MisfitAdventures: View {
 struct AdventureRow: View {
     let adventure: MisfitAdventure
     
-    @State private var shareItem: FITFileItem?
-    @State private var isGenerating = false
-    @State private var showingStravaUpload = false
-    
-    // Check if user is authenticated with Strava
-    @Environment(StravaAuthenticationSession.self) private var stravaAuth
+    @State private var showingExportSheet = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -122,88 +117,14 @@ struct AdventureRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
-        .contextMenu {
-            if isGenerating {
-                Button {
-                    // Still generating
-                } label: {
-                    Label("Generating FIT file...", systemImage: "hourglass")
-                }
-                .disabled(true)
-            } else if let item = shareItem {
-                ShareLink(item: item, preview: SharePreview(item.filename, image: Image(systemName: "bicycle")))
-                
-                // Show Strava upload option if authenticated
-                if stravaAuth.isAuthenticated && !stravaAuth.isExpired {
-                    Button {
-                        showingStravaUpload = true
-                    } label: {
-                        Label("Upload to Strava", systemImage: "arrow.up.circle.fill")
-                    }
-                }
-            } else {
-                Button {
-                    Task {
-                        await generateShareItem()
-                    }
-                } label: {
-                    Label("Export & Share", systemImage: "square.and.arrow.up")
-                }
-            }
+        .contentShape(Rectangle())
+        .onLongPressGesture {
+            showingExportSheet = true
         }
-        .sheet(isPresented: $showingStravaUpload) {
-            if let item = shareItem {
-                StravaUploadSheet(fitFileItem: item, adventure: adventure)
-            }
-        }
-        .task {
-            // Pre-generate in background when row appears
-            if shareItem == nil && !isGenerating {
-                await generateShareItem()
-            }
-        }
-    }
-    
-    private func generateShareItem() async {
-        // Prevent multiple simultaneous generations
-        guard !isGenerating else { return }
-        
-        isGenerating = true
-        print("🔄 Starting FIT file generation for \(adventure.records.count) records...")
-        
-        let startTime = Date()
-        
-        // Use a regular Task that inherits the MainActor context
-        // This allows us to safely access the SwiftData model
-        let result = await Task { @MainActor in
-            do {
-                // Create encoder and encode on the main actor
-                // SwiftData models must be accessed on the main actor
-                let encoder = MisfitFITEncoder()
-                let fitData = try encoder.encode(adventure: adventure)
-                let filename = encoder.suggestedFilename(for: adventure)
-                
-                // File I/O is safe to do here
-                let tempDirectory = FileManager.default.temporaryDirectory
-                let fileURL = tempDirectory.appendingPathComponent(filename)
-                try fitData.write(to: fileURL)
-                
-                return Result<FITFileItem, Error>.success(FITFileItem(url: fileURL, filename: filename))
-            } catch {
-                return Result<FITFileItem, Error>.failure(error)
-            }
-        }.value
-        
-        let duration = Date().timeIntervalSince(startTime)
-        
-        isGenerating = false
-        
-        switch result {
-        case .success(let item):
-            print("✅ Generated FIT file: \(item.filename) in \(String(format: "%.2f", duration))s")
-            shareItem = item
-        case .failure(let error):
-            print("❌ Failed to generate FIT file: \(error)")
+        .sheet(isPresented: $showingExportSheet) {
+            ExportSheet(adventure: adventure)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
         }
     }
     
@@ -440,3 +361,264 @@ struct StravaUploadSheet: View {
         }
     }
 }
+
+// MARK: - Export View Model
+
+@MainActor
+@Observable
+final class ExportViewModel {
+    let adventure: MisfitAdventure
+    
+    var shareItem: FITFileItem?
+    var isGenerating = false
+    var showingStravaUpload = false
+    var errorMessage: String?
+    
+    init(adventure: MisfitAdventure) {
+        self.adventure = adventure
+    }
+    
+    func generateFITFile() async {
+        // Prevent multiple simultaneous generations
+        guard !isGenerating, shareItem == nil else { return }
+        
+        isGenerating = true
+        errorMessage = nil
+        
+        // Show estimated time for large datasets
+        if adventure.records.count > 5000 {
+            print("⏱️ Large dataset detected (\(adventure.records.count) records). This may take a moment...")
+        }
+        
+        print("🔄 Starting FIT file generation for \(adventure.records.count) records...")
+        
+        let startTime = Date()
+        
+        do {
+            // Create encoder and encode
+            // SwiftData models must be accessed on the main actor
+            let encoder = MisfitFITEncoder()
+            let fitData = try encoder.encode(adventure: adventure)
+            let filename = encoder.suggestedFilename(for: adventure)
+            
+            // File I/O
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let fileURL = tempDirectory.appendingPathComponent(filename)
+            try fitData.write(to: fileURL)
+            
+            let duration = Date().timeIntervalSince(startTime)
+            print("✅ Generated FIT file: \(filename) (\(adventure.records.count) records) in \(String(format: "%.2f", duration))s")
+            
+            shareItem = FITFileItem(url: fileURL, filename: filename)
+            
+        } catch {
+            print("❌ Failed to generate FIT file: \(error)")
+            errorMessage = error.localizedDescription
+        }
+        
+        isGenerating = false
+    }
+    
+    func cleanup() {
+        guard let item = shareItem else { return }
+        
+        do {
+            try FileManager.default.removeItem(at: item.url)
+            print("🗑️ Cleaned up temp FIT file: \(item.filename)")
+        } catch {
+            print("⚠️ Failed to cleanup temp file: \(error)")
+        }
+    }
+}
+
+// MARK: - Export Sheet
+
+struct ExportSheet: View {
+    let adventure: MisfitAdventure
+    
+    @State private var viewModel: ExportViewModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(StravaAuthenticationSession.self) private var stravaAuth
+    
+    init(adventure: MisfitAdventure) {
+        self.adventure = adventure
+        self._viewModel = State(initialValue: ExportViewModel(adventure: adventure))
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                // Adventure summary
+                VStack(spacing: 12) {
+                    Image(systemName: "bicycle")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.tint)
+                    
+                    Text(viewModel.adventure.startTime.formatted(date: .abbreviated, time: .shortened))
+                        .font(.headline)
+                    
+                    HStack(spacing: 20) {
+                        if let distance = viewModel.adventure.totalDistance {
+                            VStack(spacing: 4) {
+                                Text(formatDistance(distance))
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                Text("Distance")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        if let duration = viewModel.adventure.endTime?.timeIntervalSince(viewModel.adventure.startTime) {
+                            VStack(spacing: 4) {
+                                Text(formatDuration(duration))
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                Text("Duration")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Text("\(viewModel.adventure.records.count.formatted()) data points")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.top, 20)
+                
+                Divider()
+                
+                // Actions
+                VStack(spacing: 16) {
+                    if viewModel.shareItem == nil {
+                        // Generate button
+                        Button {
+                            Task {
+                                await viewModel.generateFITFile()
+                            }
+                        } label: {
+                            HStack {
+                                if viewModel.isGenerating {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Image(systemName: "doc.badge.gearshape")
+                                }
+                                Text(viewModel.isGenerating ? "Generating FIT File..." : "Generate FIT File")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(viewModel.isGenerating ? Color.gray : Color.accentColor)
+                            .foregroundStyle(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(viewModel.isGenerating)
+                        
+                        if viewModel.adventure.records.count > 5000 {
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle")
+                                    .font(.caption)
+                                Text("Large dataset - may take a moment to generate")
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                        
+                        // Show error if any
+                        if let error = viewModel.errorMessage {
+                            Label(error, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                        
+                    } else if let item = viewModel.shareItem {
+                        // Success state - show export options
+                        VStack(spacing: 12) {
+                            Label("FIT file ready!", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .font(.headline)
+                            
+                            // Share link button
+                            ShareLink(item: item, preview: SharePreview(item.filename, image: Image(systemName: "bicycle"))) {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                    Text("Share FIT File")
+                                        .fontWeight(.semibold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.accentColor)
+                                .foregroundStyle(.white)
+                                .cornerRadius(12)
+                            }
+                            
+                            // Strava upload button if authenticated
+                            if stravaAuth.isAuthenticated && !stravaAuth.isExpired {
+                                Button {
+                                    viewModel.showingStravaUpload = true
+                                    dismiss()
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "arrow.up.circle.fill")
+                                        Text("Upload to Strava")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.orange)
+                                    .foregroundStyle(.white)
+                                    .cornerRadius(12)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                
+                Spacer()
+            }
+            .navigationTitle("Export Adventure")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+            .onDisappear {
+                // Clean up temp file when sheet disappears
+                viewModel.cleanup()
+            }
+        }
+        .sheet(isPresented: $viewModel.showingStravaUpload) {
+            if let item = viewModel.shareItem {
+                StravaUploadSheet(fitFileItem: item, adventure: viewModel.adventure)
+            }
+        }
+    }
+    
+    private func formatDistance(_ miles: Double) -> String {
+        if miles < 0.25 {
+            let feet = miles * 5280
+            return String(format: "%.0f ft", feet)
+        } else {
+            return String(format: "%.1f mi", miles)
+        }
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) / 60 % 60
+        let seconds = Int(duration) % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+}
+
