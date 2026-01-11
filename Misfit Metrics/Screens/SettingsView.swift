@@ -13,12 +13,10 @@ import KeychainSwift
 struct SettingsView: View {
     @Bindable var dashboardViewModel: Dashboard.ViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(StravaAuthenticationSession.self) private var stravaAuth
     
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
-    @StateObject private var stravaAuth = StravaAuthenticationSession.shared
-    @StateObject private var stravaAuthViewModel = StravaAuthorizationViewModel()
-    
-    @State private var loginSubscription: AnyCancellable?
+    @State private var stravaAuthViewModel: StravaAuthorizationViewModel?
     
     var body: some View {
         NavigationStack {
@@ -52,7 +50,7 @@ struct SettingsView: View {
                         }
                         
                         Button(role: .destructive) {
-                            logoutFromStrava()
+                            stravaAuth.logout()
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.right.square")
@@ -69,7 +67,7 @@ struct SettingsView: View {
                     } else {
                         // Not Authenticated State
                         Button {
-                            stravaAuthViewModel.authenticate()
+                            stravaAuthViewModel?.authenticate()
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "figure.outdoor.cycle")
@@ -98,9 +96,8 @@ struct SettingsView: View {
                     Text("Strava")
                 } footer: {
                     if stravaAuth.isAuthenticated {
-                        if let expiresAt = Settings.shared.getAuthResponse()?.expiresAt {
-                            let expireDate = Date(timeIntervalSince1970: Double(expiresAt))
-                            Text("Access expires: \(expireDate.formatted(date: .abbreviated, time: .shortened))")
+                        if let expiryDate = stravaAuth.expiryDate {
+                            Text("Access expires: \(expiryDate.formatted(date: .abbreviated, time: .shortened))")
                         }
                     } else {
                         Text("Connect your Strava account to automatically upload your rides and access your activity history.")
@@ -229,29 +226,9 @@ struct SettingsView: View {
                 }
             }
             .task {
-                setupStravaLoginListener()
+                // Initialize the auth view model with the auth session from environment
+                stravaAuthViewModel = StravaAuthorizationViewModel(authSession: stravaAuth)
             }
         }
-    }
-    
-    // MARK: - Strava Methods
-    
-    private func setupStravaLoginListener() {
-        loginSubscription = StravaAuthorizationViewModel.loginEvent
-            .receive(on: DispatchQueue.main)
-            .sink { success in
-                if success {
-                    // Refresh authentication state
-                    stravaAuth.updateAuthentication(loggedIn: true)
-                    stravaAuth.checkExpiration()
-                }
-            }
-    }
-    
-    private func logoutFromStrava() {
-        Settings.shared.removeAuthResponse()
-        Settings.shared.keychain.delete("token")
-        stravaAuth.updateAuthentication(loggedIn: false)
-        stravaAuth.expireyDate = nil
     }
 }

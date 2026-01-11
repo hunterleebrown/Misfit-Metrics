@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct Misfit_MetricsApp: App {
+    @State private var stravaAuth = StravaAuthenticationSession()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             MisfitAdventure.self,
@@ -28,6 +30,7 @@ struct Misfit_MetricsApp: App {
     var body: some Scene {
         WindowGroup {
             Dashboard()
+                .environment(stravaAuth)
                 .onOpenURL { url in
                     // Handle deep link from Strava app
                     handleStravaCallback(url: url)
@@ -40,11 +43,13 @@ struct Misfit_MetricsApp: App {
         // Check if this is a Strava callback URL
         // Expected format: misfit-metrics://www.hunterleebrown.com?code=...&state=test
         guard url.scheme == "misfit-metrics",
-              let code = StravaAuthenticationSession.shared.getStravaCode(url: url) else {
+              let code = stravaAuth.getStravaCode(url: url) else {
             return
         }
         
         // Exchange the code for a token
-        StravaAuthenticationSession.shared.fetchStravaToken(stravCode: code)
+        Task {
+            try? await stravaAuth.fetchStravaToken(stravaCode: code)
+        }
     }
 }

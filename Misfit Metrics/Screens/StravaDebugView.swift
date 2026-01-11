@@ -10,7 +10,7 @@ import KeychainSwift
 
 /// A debugging view to help test and verify Strava authentication
 struct StravaDebugView: View {
-    @StateObject private var stravaAuth = StravaAuthenticationSession.shared
+    @Environment(StravaAuthenticationSession.self) private var stravaAuth
     @State private var authResponse: StravaAuthResponse?
     
     var body: some View {
@@ -18,9 +18,9 @@ struct StravaDebugView: View {
             List {
                 Section("Authentication Status") {
                     LabeledContent("Is Authenticated", value: stravaAuth.isAuthenticated ? "✅ Yes" : "❌ No")
-                    LabeledContent("Is Expired", value: stravaAuth.expired ? "⚠️ Yes" : "✅ No")
+                    LabeledContent("Is Expired", value: stravaAuth.isExpired ? "⚠️ Yes" : "✅ No")
                     
-                    if let expiryDate = stravaAuth.expireyDate {
+                    if let expiryDate = stravaAuth.expiryDate {
                         LabeledContent("Expires At", value: expiryDate.formatted())
                     }
                 }
@@ -87,8 +87,8 @@ struct StravaDebugView: View {
                         refreshData()
                     }
                     
-                    Button("Check Expiration") {
-                        stravaAuth.checkExpiration()
+                    Button("Reload Auth State") {
+                        stravaAuth.loadAuthenticationState()
                     }
                 }
             }
