@@ -60,7 +60,7 @@ final class StravaAuthenticationSession {
     /// Log out and clear credentials
     func logout() {
         Settings.shared.removeAuthResponse()
-        Settings.shared.keychain.delete("token")
+        Settings.shared.removeAccessToken()
         updateAuthentication(loggedIn: false)
     }
     

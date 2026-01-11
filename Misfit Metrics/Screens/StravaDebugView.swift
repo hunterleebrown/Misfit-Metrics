@@ -74,7 +74,7 @@ struct StravaDebugView: View {
                 
                 Section("Keychain") {
                     Button("Check Token in Keychain") {
-                        if let token = Settings.shared.keychain.get("token") {
+                        if let token = Settings.shared.getAccessToken() {
                             print("✅ Token found in keychain: \(token.prefix(10))...")
                         } else {
                             print("❌ No token found in keychain")
