@@ -79,6 +79,10 @@ struct AdventureRow: View {
     
     @State private var shareItem: FITFileItem?
     @State private var isGenerating = false
+    @State private var showingStravaUpload = false
+    
+    // Check if user is authenticated with Strava
+    @Environment(StravaAuthenticationSession.self) private var stravaAuth
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -128,6 +132,15 @@ struct AdventureRow: View {
                 .disabled(true)
             } else if let item = shareItem {
                 ShareLink(item: item, preview: SharePreview(item.filename, image: Image(systemName: "bicycle")))
+                
+                // Show Strava upload option if authenticated
+                if stravaAuth.isAuthenticated && !stravaAuth.isExpired {
+                    Button {
+                        showingStravaUpload = true
+                    } label: {
+                        Label("Upload to Strava", systemImage: "arrow.up.circle.fill")
+                    }
+                }
             } else {
                 Button {
                     Task {
@@ -136,6 +149,11 @@ struct AdventureRow: View {
                 } label: {
                     Label("Export & Share", systemImage: "square.and.arrow.up")
                 }
+            }
+        }
+        .sheet(isPresented: $showingStravaUpload) {
+            if let item = shareItem {
+                StravaUploadSheet(fitFileItem: item, adventure: adventure)
             }
         }
         .task {
@@ -223,4 +241,202 @@ struct FITFileItem: Transferable {
     }
 }
 
+// MARK: - Strava Upload Sheet
 
+struct StravaUploadSheet: View {
+    let fitFileItem: FITFileItem
+    let adventure: MisfitAdventure
+    
+    @Environment(\.dismiss) private var dismiss
+    @State private var uploadService = StravaUploadService()
+    
+    @State private var activityName: String = ""
+    @State private var activityDescription: String = ""
+    @State private var activityType: StravaUploadService.UploadParameters.ActivityType = .ride
+    
+    @State private var isUploading = false
+    @State private var uploadStatus: UploadStatus = .notStarted
+    @State private var uploadResponse: StravaUploadService.UploadResponse?
+    @State private var errorMessage: String?
+    
+    enum UploadStatus {
+        case notStarted
+        case uploading
+        case processing
+        case success
+        case failed
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Activity Details") {
+                    TextField("Activity Name", text: $activityName)
+                    TextField("Description (optional)", text: $activityDescription, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Activity Type", selection: $activityType) {
+                        Text("Ride").tag(StravaUploadService.UploadParameters.ActivityType.ride)
+                        Text("Run").tag(StravaUploadService.UploadParameters.ActivityType.run)
+                        Text("Walk").tag(StravaUploadService.UploadParameters.ActivityType.walk)
+                        Text("Hike").tag(StravaUploadService.UploadParameters.ActivityType.hike)
+                        Text("E-Bike Ride").tag(StravaUploadService.UploadParameters.ActivityType.ebikeRide)
+                        Text("Virtual Ride").tag(StravaUploadService.UploadParameters.ActivityType.virtualRide)
+                    }
+                }
+                
+                Section("Upload Status") {
+                    switch uploadStatus {
+                    case .notStarted:
+                        Label("Ready to upload", systemImage: "checkmark.circle")
+                            .foregroundStyle(.secondary)
+                        
+                    case .uploading:
+                        HStack {
+                            ProgressView()
+                            Text("Uploading to Strava...")
+                        }
+                        
+                    case .processing:
+                        HStack {
+                            ProgressView()
+                            Text("Processing activity...")
+                        }
+                        
+                    case .success:
+                        Label("Upload successful!", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        
+                        if let response = uploadResponse, let activityId = response.activityId {
+                            Link("View on Strava", destination: URL(string: "https://www.strava.com/activities/\(activityId)")!)
+                        }
+                        
+                    case .failed:
+                        Label("Upload failed", systemImage: "xmark.circle.fill")
+                            .foregroundStyle(.red)
+                        
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Section {
+                    HStack(spacing: 12) {
+                        Text(fitFileItem.filename)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
+                        if let distance = adventure.totalDistance {
+                            Label(formatDistance(distance), systemImage: "point.bottomleft.forward.to.point.topright.scurvepath")
+                                .font(.caption)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Upload to Strava")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .disabled(isUploading)
+                }
+                
+                ToolbarItem(placement: .primaryAction) {
+                    Button(uploadStatus == .success ? "Done" : "Upload") {
+                        if uploadStatus == .success {
+                            dismiss()
+                        } else {
+                            Task {
+                                await performUpload()
+                            }
+                        }
+                    }
+                    .disabled(isUploading || activityName.isEmpty)
+                }
+            }
+            .onAppear {
+                // Pre-fill with adventure date
+                if activityName.isEmpty {
+                    activityName = adventure.startTime.formatted(date: .abbreviated, time: .shortened)
+                }
+            }
+        }
+    }
+    
+    private func performUpload() async {
+        isUploading = true
+        uploadStatus = .uploading
+        errorMessage = nil
+        
+        do {
+            let parameters = StravaUploadService.UploadParameters(
+                fitFileItem: fitFileItem,
+                name: activityName,
+                description: activityDescription.isEmpty ? nil : activityDescription,
+                activityType: activityType
+            )
+            
+            let response = try await uploadService.upload(parameters: parameters)
+            uploadResponse = response
+            
+            // If activity ID is not immediately available, poll for status
+            if response.activityId == nil && response.status != "error" {
+                uploadStatus = .processing
+                try await checkUploadStatus(uploadId: response.id)
+            } else if response.activityId != nil {
+                uploadStatus = .success
+            } else {
+                uploadStatus = .failed
+                errorMessage = response.error ?? "Unknown error"
+            }
+            
+        } catch let error as StravaUploadService.UploadError {
+            uploadStatus = .failed
+            errorMessage = error.localizedDescription
+        } catch {
+            uploadStatus = .failed
+            errorMessage = error.localizedDescription
+        }
+        
+        isUploading = false
+    }
+    
+    private func checkUploadStatus(uploadId: Int) async throws {
+        // Poll up to 10 times with 2-second delays
+        for _ in 0..<10 {
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+            let status = try await uploadService.checkUploadStatus(uploadId: uploadId)
+            uploadResponse = status
+            
+            if let activityId = status.activityId {
+                uploadStatus = .success
+                return
+            } else if status.status == "error" {
+                uploadStatus = .failed
+                errorMessage = status.error ?? "Processing failed"
+                return
+            }
+        }
+        
+        // If we get here, still processing but we'll stop polling
+        uploadStatus = .success
+        errorMessage = "Upload is processing. Check Strava in a few moments."
+    }
+    
+    private func formatDistance(_ miles: Double) -> String {
+        if miles < 0.25 {
+            let feet = miles * 5280
+            return String(format: "%.0f ft", feet)
+        } else {
+            return String(format: "%.1f mi", miles)
+        }
+    }
+}

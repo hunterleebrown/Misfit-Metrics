@@ -16,7 +16,21 @@ final class StravaAuthorizationViewModel: NSObject {
     
     var isAuthenticating: Bool = false
     
-    static let scope = "read%2Cread_all%2Cprofile%3Aread_all%2Cactivity%3Aread_all"
+    /// Strava OAuth scopes requested by the app
+    static let requestedScopes: [String] = [
+        "read",                  // Read public data
+        "read_all",             // Read private data
+        "profile:read_all",     // Read all profile information
+        "activity:read_all",    // Read all activities (public and private)
+        "activity:write"        // Create, modify, and delete activities (required for uploads)
+    ]
+    
+    /// URL-encoded scope string for OAuth requests
+    static var scope: String {
+        requestedScopes
+            .joined(separator: ",")
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    }
     
     init(authSession: StravaAuthenticationSession) {
         self.authSession = authSession
